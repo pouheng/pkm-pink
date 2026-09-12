@@ -122,6 +122,17 @@
       const frame = document.getElementById('app-frame');
       const hostFrame = window.frameElement;
 
+      // 動態讀取 bridge 設定的 App 來源（PKM_APP_BASE_URL），避免寫死上游網址
+      try {
+        const bridgeRoot = (window.parent && window.parent !== window && window.parent.PKM_APP_BASE_URL)
+          || (window.top && window.top !== window && window.top.PKM_APP_BASE_URL)
+          || '';
+        if (bridgeRoot) {
+          const nextSrc = String(bridgeRoot).replace(/\/+$/, '') + '/apps/battle-sim/index.html';
+          if (nextSrc !== frame.getAttribute('src')) frame.setAttribute('src', nextSrc);
+        }
+      } catch (e) {}
+
       // 从注入 JSON 读取竖屏模式设置
       function isPortraitMode() {
         try {
