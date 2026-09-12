@@ -782,6 +782,13 @@ async function openPanel() {
     panelEl.addEventListener('mousedown', (e) => { if (e.target === panelEl) closePanel(); });
     document.body.appendChild(panelEl);
     refreshPanel();
+    try {
+        if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'pkm-creative-opened' }, '*');
+        }
+    } catch (e) {
+        // 忽略：非 iframe 環境
+    }
 }
 
 function closePanel() {

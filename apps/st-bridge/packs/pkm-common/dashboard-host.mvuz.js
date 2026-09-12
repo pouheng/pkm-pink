@@ -1298,7 +1298,13 @@
             } catch (_) {}
             runAfterReady();
           });
-          iframe.attr('src', PKM_URL);
+          let dashboardSrc = PKM_URL;
+          try {
+            const resolved = new URL(PKM_URL, ROOT.location?.href || undefined);
+            resolved.searchParams.set('_pkmv', String(Date.now()));
+            dashboardSrc = resolved.href;
+          } catch (_) {}
+          iframe.attr('src', dashboardSrc);
         } else {
           pushDashboardState('open');
           runAfterReady();
