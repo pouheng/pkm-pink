@@ -110,16 +110,6 @@
 
     const PKM_URL = resolveDashboardUrl();
 
-    function resolveCreativeUrl() {
-      try {
-        const u = new URL(PKM_URL, ROOT.location?.href || undefined);
-        const base = u.origin + u.pathname.replace(/\/apps\/[^/]+\/index\.html$/, '');
-        return `${base}/apps/creative/index.html`;
-      } catch (_) {
-        return `${DEFAULT_APP_BASE_URL}/apps/creative/index.html`;
-      }
-    }
-
     function waitForJQuery(callback) {
       if (disposed) return;
       if (typeof ROOT.jQuery !== 'undefined') {
@@ -1315,13 +1305,7 @@
         .attr('aria-label', '創造模式')
         .html('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg><span>創造模式</span>');
       creativeFab.on('click', () => {
-        const url = resolveCreativeUrl();
-        try {
-          const opened = ROOT.open(url, '_blank', 'noopener');
-          if (!opened) ROOT.location?.assign?.(url);
-        } catch (_) {
-          try { ROOT.location?.assign?.(url); } catch (__) {}
-        }
+        openOverlay(() => postToIframe({ type: 'pkm-open-creative', product: PRODUCT }));
       });
 
       $('body').append(ball, overlay, creativeFab);
