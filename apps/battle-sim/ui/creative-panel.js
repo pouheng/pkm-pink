@@ -803,7 +803,10 @@ function createLauncher() {
 function init() {
     if (typeof document === 'undefined') return;
     injectStyles();
-    createLauncher();
+    // 儀表板等外部容器可設定此旗標，改用容器提供的按鈕唤出面板
+    if (!(typeof window !== 'undefined' && window.PKM_CREATIVE_HIDE_LAUNCHER === true)) {
+        createLauncher();
+    }
     CreativeMode.onChange(() => {
         if (launcherEl) launcherEl.className = 'cm-launcher' + (CreativeMode.isEnabled() ? ' active' : '');
         if (panelEl) refreshPanel();

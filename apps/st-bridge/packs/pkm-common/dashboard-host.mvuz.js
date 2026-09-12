@@ -1049,44 +1049,39 @@
         .pkm-mvuz-ball-fold-open {
           display: none;
         }
-        .pkm-mvuz-ball-creative-btn {
+        .pkm-mvuz-creative-btn {
           position: absolute;
-          left: -2px;
-          top: -2px;
+          top: -12px;
+          left: -12px;
           appearance: none;
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 22px;
-          height: 22px;
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          border-radius: 50%;
-          background: rgba(18, 26, 34, 0.82);
-          color: rgba(255, 255, 255, 0.88);
-          cursor: pointer;
+          width: 34px;
+          height: 34px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(25, 25, 25, 0.35);
+          color: rgba(255, 255, 255, 0.6);
+          border-radius: 10px;
           padding: 0;
+          cursor: pointer;
+          user-select: none;
+          transition: all 0.2s ease;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
           z-index: 2;
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28);
-          transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
         }
-        .pkm-mvuz-ball-creative-btn:hover {
-          background: rgba(28, 42, 54, 0.94);
-          border-color: rgba(255, 255, 255, 0.48);
-          transform: translateY(-1px);
+        .pkm-mvuz-creative-btn:hover {
+          background: rgba(255, 209, 102, 0.9);
+          border-color: rgba(255, 209, 102, 1);
+          color: #1b1e2b;
+          transform: translateY(-2px);
         }
-        .pkm-mvuz-ball-creative-btn svg {
-          width: 12px;
-          height: 12px;
+        .pkm-mvuz-creative-btn:active {
+          transform: translateY(0);
         }
-        #${BALL_ID}.${BALL_COLLAPSED_CLASS} .pkm-mvuz-ball-creative-btn {
-          left: 3px;
-          top: auto;
-          bottom: 5px;
-          width: 24px;
-          height: 24px;
-          border-color: transparent;
-          background: transparent;
-          box-shadow: none;
+        .pkm-mvuz-creative-btn svg {
+          width: 18px;
+          height: 18px;
         }
         #${BALL_ID}.${BALL_COLLAPSED_CLASS} {
           right: 0;
@@ -1195,15 +1190,8 @@
               <path d="m9 18 6-6-6-6" />
             </svg>
           </button>
-          <button class="pkm-mvuz-ball-creative-btn" type="button" title="創造模式" aria-label="創造模式">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-            </svg>
-          </button>
         `);
       const ballFoldBtn = ball.find('.pkm-mvuz-ball-fold-btn');
-      const ballCreativeBtn = ball.find('.pkm-mvuz-ball-creative-btn');
 
       const overlay = $('<div>')
         .attr('id', OVERLAY_ID)
@@ -1239,6 +1227,13 @@
         .addClass('pkm-mvuz-close-btn')
         .html('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>');
 
+      const creativeBtn = $('<button>')
+        .attr('type', 'button')
+        .attr('title', '創造模式')
+        .attr('aria-label', '創造模式')
+        .addClass('pkm-mvuz-creative-btn')
+        .html('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>');
+
       const iframe = $('<iframe>')
         .attr('id', IFRAME_ID)
         .css({
@@ -1251,7 +1246,18 @@
           overflow: 'hidden'
         });
 
-      wrapper.append(iframe, closeBtn);
+      creativeBtn.on('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const send = () => postToIframe({ type: 'pkm-open-creative', product: PRODUCT });
+        if (!iframeInitialized) {
+          iframe.one('load', send);
+        } else {
+          send();
+        }
+      });
+
+      wrapper.append(iframe, creativeBtn, closeBtn);
       overlay.append(wrapper);
       $('body').append(ball, overlay);
       dashboardChrome.iframe = iframe[0] || null;
@@ -1301,11 +1307,6 @@
 
       ball.on('click', () => {
         openOverlay();
-      });
-      ballCreativeBtn.on('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        openOverlay(() => postToIframe({ type: 'pkm-open-creative', product: PRODUCT }));
       });
       ballFoldBtn.on('click', (event) => {
         event.preventDefault();
