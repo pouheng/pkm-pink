@@ -321,6 +321,14 @@ const CreativeMode = {
         else this.enable();
     },
 
+    /**
+     * 若目前已開啟，重新套用所有覆蓋（用於資料來源稍後才載入的情境）
+     */
+    applyNow() {
+        if (state.enabled) applyAll();
+        return state.enabled;
+    },
+
     onChange(cb) {
         if (typeof cb === 'function') listeners.push(cb);
     },
@@ -676,6 +684,17 @@ const CreativeMode = {
 loadFromStorage();
 if (state.enabled) {
     applyAll();
+}
+
+// 跨頁 / 跨 iframe 同步：同一來源（origin）下其他頁面修改設定時即時重套用
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('storage', (event) => {
+        if (event.key !== STORAGE_KEY) return;
+        loadFromStorage();
+        restoreAll();
+        if (state.enabled) applyAll();
+        emitChange();
+    });
 }
 
 if (typeof window !== 'undefined') {

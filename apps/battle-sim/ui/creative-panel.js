@@ -734,8 +734,36 @@ function refreshPanel() {
     if (launcherEl) launcherEl.className = 'cm-launcher' + (CreativeMode.isEnabled() ? ' active' : '');
 }
 
-function openPanel() {
+/**
+ * 確保 POKEDEX / MOVES 已載入。
+ * 在戰鬥 app 中兩者已由 globals.js 載入；在 dashboard 等外部頁面則延遲載入，
+ * 避免拖慢該頁初始載入速度。
+ */
+async function ensureData() {
+    if (typeof globalThis === 'undefined') return;
+    if (!globalThis.POKEDEX) {
+        try {
+            await import('../../shared/pokedex-data.js');
+        } catch (e) {
+            console.warn('[CREATIVE] 載入 POKEDEX 失敗:', e);
+        }
+    }
+    const hasMoves = globalThis.MOVES || (typeof window !== 'undefined' && window.MOVES);
+    if (!hasMoves) {
+        try {
+            const mod = await import('../data/moves-data.js');
+            globalThis.MOVES = mod.MOVES;
+            if (typeof window !== 'undefined') window.MOVES = mod.MOVES;
+        } catch (e) {
+            console.warn('[CREATIVE] 載入 MOVES 失敗:', e);
+        }
+    }
+    CreativeMode.applyNow();
+}
+
+async function openPanel() {
     if (panelEl) return;
+    await ensureData();
     injectStyles();
     const body = el('div', { class: 'cm-body' });
     const tabsBar = el('div', { class: 'cm-tabs' });
