@@ -1250,8 +1250,14 @@
         event.preventDefault();
         event.stopPropagation();
         const send = () => {
-          const ok = postToIframe({ type: 'pkm-open-creative', product: PRODUCT });
-          console.log('[PKM Creative] open message sent:', ok);
+          let attempts = 0;
+          const trySend = () => {
+            attempts += 1;
+            const ok = postToIframe({ type: 'pkm-open-creative', product: PRODUCT });
+            console.log('[PKM Creative] open message sent:', ok, 'attempt', attempts);
+            if (attempts < 5) setTimeout(trySend, 350);
+          };
+          trySend();
         };
         console.log('[PKM Creative] button clicked, iframeInitialized =', iframeInitialized);
         if (!iframeInitialized) {

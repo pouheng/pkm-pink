@@ -19,6 +19,8 @@ import CreativeMode, {
     MOVE_CATEGORIES
 } from '../systems/creative-mode.js';
 
+console.log('[PKM Creative] panel module loaded');
+
 const STYLE_ID = 'creative-panel-style';
 let panelEl = null;
 let launcherEl = null;
@@ -848,6 +850,7 @@ if (typeof window !== 'undefined') {
             else openPanel();
         }
     });
+    console.log('[PKM Creative] message listener registered');
 }
 
 export { openPanel, closePanel };
