@@ -63,6 +63,15 @@
       return clampNumber(value, 1, MAX_PARTY_SIZE, fallback);
     }
 
+    function parseStorageIndex(payload) {
+      if (payload && typeof payload.key === 'string') {
+        const match = payload.key.trim().match(/^storage_(\d+)$/i);
+        if (match) return clampNumber(match[1], 1, 9999, 1) - 1;
+      }
+      const raw = payload?.index ?? payload?.storageIndex ?? payload?.slot ?? payload?.key;
+      return clampNumber(raw, 1, 9999, 1) - 1;
+    }
+
     function runTransferDeposit(task) {
       const run = actionLockState[transferDepositLockKey]
         .catch(() => {})
@@ -249,6 +258,112 @@
           }, actionWriteOptions(action, writeOptions, ['/pkm/party/slots', '/pkm/box/boxes/0/slots']));
         case 'state.replace':
           return saveState(payload?.state || payload, actionWriteOptions(action, writeOptions, ['/pkm']));
+        case 'party.setPokemon':
+          {
+            const slotNumber = parseSlotNumber(payload.slot ?? payload.slotKey ?? payload.targetSlot, 1);
+            const pokemon = normalizePokemon(payload.pokemon || payload, slotNumber);
+            if (!pokemon.name) throw new Error('party.setPokemon requires a pokemon name');
+            return patchState((state) => {
+              state.party.slots = normalizePartySlots(state.party.slots);
+              state.party.slots[slotNumber - 1] = normalizePokemon(pokemon, slotNumber);
+              state.party.slots = normalizePartySlots(state.party.slots);
+              return state;
+            }, actionWriteOptions(action, {
+              ...writeOptions,
+              operationId: writeOptions.operationId || `action:party.set:slot${slotNumber}`
+            }, [`/pkm/party/slots/${slotNumber - 1}`]));
+          }
+        case 'party.addPokemon':
+          {
+            const requested = payload.slot ?? payload.slotKey ?? payload.targetSlot;
+            const pokemon = normalizePokemon(payload.pokemon || payload, 0);
+            if (!pokemon.name) throw new Error('party.addPokemon requires a pokemon name');
+            return patchState((state) => {
+              state.party.slots = normalizePartySlots(state.party.slots);
+              let index = requested
+                ? parseSlotNumber(requested, 1) - 1
+                : state.party.slots.findIndex((entry) => !entry.name);
+              if (index < 0 || index >= MAX_PARTY_SIZE || state.party.slots[index]?.name) {
+                const empty = state.party.slots.findIndex((entry) => !entry.name);
+                index = empty >= 0 ? empty : 0;
+              }
+              state.party.slots[index] = normalizePokemon(pokemon, index + 1);
+              state.party.slots = normalizePartySlots(state.party.slots);
+              return state;
+            }, actionWriteOptions(action, writeOptions, ['/pkm/party/slots']));
+          }
+        case 'party.updatePokemon':
+          {
+            const slotNumber = parseSlotNumber(payload.slot ?? payload.slotKey ?? payload.targetSlot, 1);
+            return patchState((state) => {
+              const index = slotNumber - 1;
+              const current = state.party.slots?.[index];
+              if (!current) return state;
+              const patch = isObject(payload.patch) ? payload.patch : {};
+              state.party.slots[index] = normalizePokemon({ ...current, ...patch, slot: slotNumber }, slotNumber);
+              state.party.slots = normalizePartySlots(state.party.slots);
+              return state;
+            }, actionWriteOptions(action, {
+              ...writeOptions,
+              operationId: writeOptions.operationId || `action:party.update:slot${slotNumber}`
+            }, [`/pkm/party/slots/${slotNumber - 1}`]));
+          }
+        case 'party.clearPokemon':
+          {
+            const slotNumber = parseSlotNumber(payload.slot ?? payload.slotKey ?? payload.targetSlot, 1);
+            return patchState((state) => {
+              state.party.slots = normalizePartySlots(state.party.slots);
+              state.party.slots[slotNumber - 1] = normalizePokemon({}, slotNumber);
+              state.party.slots = normalizePartySlots(state.party.slots);
+              return state;
+            }, actionWriteOptions(action, {
+              ...writeOptions,
+              operationId: writeOptions.operationId || `action:party.clear:slot${slotNumber}`
+            }, [`/pkm/party/slots/${slotNumber - 1}`]));
+          }
+        case 'box.addPokemon':
+          {
+            const pokemon = normalizeTransferBuffer(payload.pokemon || payload);
+            if (!pokemon) throw new Error('box.addPokemon requires a pokemon name');
+            return patchState((state) => {
+              state.box = isObject(state.box) ? state.box : {};
+              if (!Array.isArray(state.box.boxes) || !state.box.boxes.length) {
+                state.box.boxes = [{ id: 'box_01', name: 'Box 1', slots: [] }];
+              }
+              const box = state.box.boxes[0];
+              box.slots = Array.isArray(box.slots) ? box.slots : [];
+              box.slots.push(pokemon);
+              return state;
+            }, actionWriteOptions(action, writeOptions, ['/pkm/box/boxes/0/slots']));
+          }
+        case 'box.updatePokemon':
+          {
+            const index = parseStorageIndex(payload);
+            return patchState((state) => {
+              const box = state.box.boxes?.[0];
+              if (!box || !Array.isArray(box.slots) || !box.slots[index]) return state;
+              const patch = isObject(payload.patch) ? payload.patch : {};
+              const normalized = normalizeTransferBuffer({ ...box.slots[index], ...patch });
+              if (normalized) box.slots[index] = normalized;
+              return state;
+            }, actionWriteOptions(action, {
+              ...writeOptions,
+              operationId: writeOptions.operationId || `action:box.update:${index + 1}`
+            }, ['/pkm/box/boxes/0/slots']));
+          }
+        case 'box.removePokemon':
+          {
+            const index = parseStorageIndex(payload);
+            return patchState((state) => {
+              const box = state.box.boxes?.[0];
+              if (!box || !Array.isArray(box.slots)) return state;
+              if (index >= 0 && index < box.slots.length) box.slots.splice(index, 1);
+              return state;
+            }, actionWriteOptions(action, {
+              ...writeOptions,
+              operationId: writeOptions.operationId || `action:box.remove:${index + 1}`
+            }, ['/pkm/box/boxes/0/slots']));
+          }
         default:
           throw new Error(`Unknown PKM action: ${action}`);
       }

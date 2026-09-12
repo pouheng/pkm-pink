@@ -702,10 +702,214 @@ function downloadText(filename, text) {
 // 面板外殼
 // ============================================
 
+// ============================================
+// 分頁：隊伍 / MVU 變數
+// ============================================
+
+function getMvuState() {
+    if (typeof window === 'undefined') return null;
+    return window.pkmBridgeData || null;
+}
+
+function canEditMvu() {
+    return typeof window !== 'undefined' && typeof window.postPkmAction === 'function';
+}
+
+function dispatchMvu(action, payload) {
+    if (!canEditMvu()) {
+        toast('此功能需在酒館儀表板中使用', true);
+        return Promise.resolve(false);
+    }
+    return window.postPkmAction(action, payload)
+        .then(() => {
+            toast('已更新 MVU');
+            setTimeout(() => { if (activeTab === 'mvu' && panelEl) refreshPanel(); }, 500);
+            return true;
+        })
+        .catch((err) => {
+            toast('更新失敗：' + (err && err.message || err), true);
+            return false;
+        });
+}
+
+function partySlotKeys() {
+    return ['slot1', 'slot2', 'slot3', 'slot4', 'slot5', 'slot6'];
+}
+
+function boxStorageKeys(state) {
+    const box = state && state.box ? state.box : {};
+    return Object.keys(box)
+        .filter((key) => /^storage_\d+$/.test(key))
+        .sort((a, b) => Number(a.split('_')[1]) - Number(b.split('_')[1]));
+}
+
+function pokemonLabel(pokemon) {
+    if (!pokemon || !pokemon.name) return '(空)';
+    const nick = pokemon.nickname ? `「${pokemon.nickname}」` : '';
+    return `${pokemon.name}${nick}${pokemon.lv ? ' Lv.' + pokemon.lv : ''}`;
+}
+
+function renderMvuTab(container) {
+    const state = getMvuState();
+
+    const header = el('div', { class: 'cm-section' });
+    header.appendChild(el('h3', { text: 'MVU 隊伍 / 盒子編輯' }));
+    if (!canEditMvu()) {
+        header.appendChild(el('p', {
+            class: 'cm-hint',
+            text: '此分頁需在酒館的儀表板（懸浮球開啟）中使用，才能寫回 MVU 變數。'
+        }));
+    } else if (!state) {
+        header.appendChild(el('p', { class: 'cm-hint', text: '尚未收到 MVU 狀態，請稍候或按下方重新讀取。' }));
+    } else {
+        header.appendChild(el('p', { class: 'cm-hint', text: '直接修改隊伍與盒子的寶可夢。暱稱會影響戰鬥中「暱稱覆蓋」的判定。' }));
+    }
+    header.appendChild(el('div', { class: 'cm-row' }, [
+        el('button', {
+            class: 'cm-btn',
+            text: '重新讀取',
+            onclick: () => refreshPanel()
+        })
+    ]));
+    container.appendChild(header);
+
+    // === 隊伍 ===
+    const partySection = el('div', { class: 'cm-section' });
+    partySection.appendChild(el('h3', { text: '隊伍（PARTY）' }));
+    const party = (state && state.party) || {};
+    for (const key of partySlotKeys()) {
+        partySection.appendChild(renderPokemonEditor(key, party[key], key, true));
+    }
+    container.appendChild(partySection);
+
+    // === 新增寶可夢 ===
+    const addSection = el('div', { class: 'cm-section' });
+    addSection.appendChild(el('h3', { text: '新增寶可夢' }));
+    let newSpeciesId = '';
+    const speciesPicker = buildPicker(speciesItems(), (id) => { newSpeciesId = id; }, '搜尋物種…');
+    const addNick = el('input', { type: 'text', placeholder: '暱稱（可留空）' });
+    const addLv = el('input', { type: 'number', min: '1', max: '100', value: '50' });
+    const addTarget = el('select');
+    addTarget.appendChild(el('option', { value: 'party', text: '隊伍（第一個空槽）' }));
+    addTarget.appendChild(el('option', { value: 'box', text: '盒子（PC BOX）' }));
+    addSection.appendChild(speciesPicker);
+    addSection.appendChild(el('div', { class: 'cm-row' }, [
+        el('label', { class: 'cm-field', text: '暱稱' }, [addNick]),
+        el('label', { class: 'cm-field', text: '等級' }, [addLv]),
+        el('label', { class: 'cm-field', text: '加入' }, [addTarget])
+    ]));
+    addSection.appendChild(el('div', { class: 'cm-row' }, [
+        el('button', {
+            class: 'cm-btn primary',
+            text: '新增寶可夢',
+            onclick: () => {
+                if (!newSpeciesId) { toast('請先選擇物種', true); return; }
+                const data = CreativeMode.getSpecies(newSpeciesId);
+                const pokemon = {
+                    name: data ? data.name : newSpeciesId,
+                    nickname: addNick.value || null,
+                    lv: Number(addLv.value) || 5
+                };
+                const action = addTarget.value === 'box' ? 'box.addPokemon' : 'party.addPokemon';
+                dispatchMvu(action, { pokemon });
+                addNick.value = '';
+            }
+        })
+    ]));
+    container.appendChild(addSection);
+
+    // === 盒子 ===
+    const boxSection = el('div', { class: 'cm-section' });
+    boxSection.appendChild(el('h3', { text: '盒子（PC BOX）' }));
+    const keys = boxStorageKeys(state);
+    if (!keys.length) {
+        boxSection.appendChild(el('p', { class: 'cm-hint', text: '盒子目前是空的。' }));
+    } else {
+        for (const key of keys) {
+            boxSection.appendChild(renderPokemonEditor(key, (state.box || {})[key], key, false));
+        }
+    }
+    container.appendChild(boxSection);
+}
+
+function renderPokemonEditor(key, pokemon, slotKey, isParty) {
+    const card = el('div', { class: 'cm-list-item', style: 'flex-wrap:wrap;align-items:flex-start;gap:10px' });
+    card.appendChild(el('div', { style: 'min-width:140px;font-weight:700' }, [
+        el('div', { text: `${slotKey} · ${pokemonLabel(pokemon)}` }),
+        el('div', { class: 'cm-hint', text: pokemon && pokemon.species ? 'species: ' + pokemon.species : '' })
+    ]));
+
+    if (!canEditMvu()) {
+        card.appendChild(el('span', { class: 'cm-hint', text: '（唯讀）' }));
+        return card;
+    }
+
+    const nick = el('input', { type: 'text', value: (pokemon && pokemon.nickname) || '', placeholder: '暱稱' });
+    const fields = [el('label', { class: 'cm-field', text: '暱稱' }, [nick])];
+
+    let lvInput = null;
+    let abilityInput = null;
+    let itemInput = null;
+    let natureInput = null;
+    let shinyInput = null;
+
+    if (isParty) {
+        lvInput = el('input', { type: 'number', min: '1', max: '100', value: String((pokemon && pokemon.lv) || 50) });
+        abilityInput = el('input', { type: 'text', value: (pokemon && pokemon.ability) || '', placeholder: '特性' });
+        itemInput = el('input', { type: 'text', value: (pokemon && pokemon.item) || '', placeholder: '道具' });
+        natureInput = el('input', { type: 'text', value: (pokemon && pokemon.nature) || '', placeholder: '性格' });
+        shinyInput = el('input', { type: 'checkbox' });
+        if (pokemon && pokemon.shiny) shinyInput.setAttribute('checked', 'checked');
+        fields.push(
+            el('label', { class: 'cm-field', text: '等級' }, [lvInput]),
+            el('label', { class: 'cm-field', text: '特性' }, [abilityInput]),
+            el('label', { class: 'cm-field', text: '道具' }, [itemInput]),
+            el('label', { class: 'cm-field', text: '性格' }, [natureInput]),
+            el('label', { class: 'cm-field', text: '閃光' }, [shinyInput])
+        );
+    }
+    card.appendChild(el('div', { class: 'cm-row', style: 'flex:1' }, fields));
+
+    const buttons = [];
+    buttons.push(el('button', {
+        class: 'cm-btn primary',
+        text: '儲存',
+        onclick: () => {
+            const patch = { nickname: nick.value || null };
+            if (isParty) {
+                patch.lv = Number(lvInput.value) || 1;
+                patch.ability = abilityInput.value || null;
+                patch.item = itemInput.value || null;
+                patch.nature = natureInput.value || null;
+                patch.shiny = shinyInput.checked;
+                dispatchMvu('party.updatePokemon', { slot: Number(slotKey.replace('slot', '')), patch });
+            } else {
+                dispatchMvu('box.updatePokemon', { key: slotKey, patch });
+            }
+        }
+    }));
+    if (isParty) {
+        buttons.push(el('button', {
+            class: 'cm-btn danger',
+            text: '清空',
+            onclick: () => dispatchMvu('party.clearPokemon', { slot: Number(slotKey.replace('slot', '')) })
+        }));
+    } else {
+        buttons.push(el('button', {
+            class: 'cm-btn danger',
+            text: '刪除',
+            onclick: () => dispatchMvu('box.removePokemon', { key: slotKey })
+        }));
+    }
+    card.appendChild(el('div', { class: 'cm-row' }, buttons));
+    return card;
+}
+
 const TABS = [
     { id: 'species', label: '種族值', render: renderSpeciesTab },
     { id: 'moves', label: '招式', render: renderMovesTab },
     { id: 'nickname', label: '暱稱覆蓋', render: renderNicknameTab },
+    { id: 'mvu', label: '隊伍/MVU', render: renderMvuTab },
     { id: 'data', label: '資料', render: renderDataTab }
 ];
 
