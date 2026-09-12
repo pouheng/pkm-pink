@@ -164,11 +164,24 @@ function buildPicker(items, onPick, placeholder) {
         if (select.value) onPick(select.value);
     });
     rebuild();
+    wrap.setValue = (id) => {
+        if (!id) {
+            select.value = '';
+            return;
+        }
+        if (!Array.from(select.options).some((opt) => opt.value === id)) {
+            filter.value = '';
+            rebuild();
+        }
+        select.value = id;
+        onPick(id);
+    };
     return wrap;
 }
 
 function statsEditor(initial) {
     const inputs = {};
+    const ranges = {};
     const grid = el('div', { class: 'cm-stats' });
     const bst = el('span', { class: 'cm-bst', text: 'BST 0' });
 
@@ -184,6 +197,7 @@ function statsEditor(initial) {
         range.addEventListener('input', () => { number.value = range.value; updateBST(); });
         number.addEventListener('input', () => { range.value = number.value; updateBST(); });
         inputs[key] = number;
+        ranges[key] = range;
         grid.appendChild(el('div', { class: 'cm-stat' }, [
             el('label', { text: STAT_LABELS[key] }),
             range,
@@ -199,6 +213,14 @@ function statsEditor(initial) {
             const stats = {};
             for (const key of STAT_KEYS) stats[key] = Number(inputs[key].value) || 0;
             return stats;
+        },
+        set(values) {
+            for (const key of STAT_KEYS) {
+                const value = values && values[key] != null ? values[key] : 0;
+                inputs[key].value = String(value);
+                if (ranges[key]) ranges[key].value = String(value);
+            }
+            updateBST();
         }
     };
 }
@@ -522,19 +544,29 @@ function renderMovesTab(container) {
 
 function renderNicknameTab(container) {
     const form = el('div', { class: 'cm-section' });
-    form.appendChild(el('h3', { text: '暱稱導向的種族值 / 特性覆蓋' }));
+    form.appendChild(el('h3', { text: '暱稱導向的種族值 / 特性 / 招式覆蓋' }));
     form.appendChild(el('p', {
         class: 'cm-hint',
-        text: '當寶可夢的 nickname 等於設定值時，戰鬥時自動改用另一套種族值與特性。可用於還原特殊型態（例如：小智版甲賀忍蛙）。'
+        text: '當寶可夢的 nickname 等於設定值時，戰鬥時自動改用另一套種族值、特性與招式。可用於還原特殊型態（例如：小智版甲賀忍蛙）。'
     }));
 
     const nickname = el('input', { type: 'text', placeholder: '小智版甲賀忍蛙' });
     const targetHost = el('div');
     let targetSpecies = '';
-    targetHost.appendChild(buildPicker(speciesItems(), (id) => { targetSpecies = id; }, '可選：替換成其他物種…'));
+    const speciesPicker = buildPicker(speciesItems(), (id) => { targetSpecies = id; }, '可選：替換成其他物種…');
+    targetHost.appendChild(speciesPicker);
     const ability = el('input', { type: 'text', placeholder: '牽絆變身' });
     const note = el('input', { type: 'text', placeholder: '原作動畫形態還原' });
     const stats = statsEditor({ hp: 72, atk: 145, def: 67, spa: 153, spd: 71, spe: 132 });
+
+    const moveInputs = [];
+    for (let i = 0; i < 4; i++) {
+        moveInputs.push(el('input', { type: 'text', list: 'cm-move-list', placeholder: `招式 ${i + 1}` }));
+    }
+    const moveList = el('datalist', { id: 'cm-move-list' });
+    for (const it of moveItems()) {
+        moveList.appendChild(el('option', { value: it.id, text: it.name }));
+    }
 
     form.appendChild(el('div', { class: 'cm-row' }, [
         el('label', { class: 'cm-field', text: '暱稱' }, [nickname]),
@@ -547,22 +579,61 @@ function renderNicknameTab(container) {
     ]));
     form.appendChild(stats.node);
     form.appendChild(el('div', { class: 'cm-row' }, [
-        el('button', {
-            class: 'cm-btn primary',
-            text: '新增 / 更新覆蓋',
-            onclick: () => {
-                if (!nickname.value.trim()) { toast('請輸入暱稱', true); return; }
-                const data = { baseStats: stats.get() };
-                if (targetSpecies) data.species = targetSpecies;
-                if (ability.value) data.ability = ability.value;
-                if (note.value) data.note = note.value;
-                CreativeMode.setNicknameOverride(nickname.value.trim(), data);
-                toast('已設定暱稱覆蓋：' + nickname.value.trim());
-                nickname.value = '';
-                renderList();
-            }
-        })
+        el('span', { class: 'cm-field', text: '替換招式（可選，最多 4；可輸入 ID 或名稱，留空沿用原招式）' }, [])
     ]));
+    form.appendChild(el('div', { class: 'cm-row' }, moveInputs.map((inp) => el('label', { class: 'cm-field', text: '' }, [inp]))));
+    form.appendChild(moveList);
+
+    let editingKey = null;
+    const submitBtn = el('button', {
+        class: 'cm-btn primary',
+        text: '新增覆蓋',
+        onclick: () => {
+            const nick = nickname.value.trim();
+            if (!nick) { toast('請輸入暱稱', true); return; }
+            const data = { baseStats: stats.get() };
+            if (targetSpecies) data.species = targetSpecies;
+            if (ability.value) data.ability = ability.value;
+            if (note.value) data.note = note.value;
+            const moves = moveInputs.map((inp) => inp.value.trim()).filter(Boolean).slice(0, 4);
+            if (moves.length) data.moves = moves;
+            if (editingKey && editingKey.toLowerCase() !== nick.toLowerCase()) {
+                CreativeMode.removeNicknameOverride(editingKey);
+            }
+            CreativeMode.setNicknameOverride(nick, data);
+            toast((editingKey ? '已更新' : '已設定') + '暱稱覆蓋：' + nick);
+            resetForm();
+            renderList();
+        }
+    });
+    const cancelBtn = el('button', { class: 'cm-btn', text: '取消編輯', onclick: () => resetForm() });
+    cancelBtn.style.display = 'none';
+    form.appendChild(el('div', { class: 'cm-row' }, [submitBtn, cancelBtn]));
+
+    function resetForm() {
+        editingKey = null;
+        nickname.value = '';
+        ability.value = '';
+        note.value = '';
+        moveInputs.forEach((inp) => { inp.value = ''; });
+        submitBtn.textContent = '新增覆蓋';
+        cancelBtn.style.display = 'none';
+    }
+
+    function loadRule(entry) {
+        editingKey = entry.nickname;
+        nickname.value = entry.nickname || '';
+        ability.value = entry.ability || '';
+        note.value = entry.note || '';
+        stats.set(entry.baseStats || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 });
+        const moves = Array.isArray(entry.moves) ? entry.moves : [];
+        moveInputs.forEach((inp, i) => { inp.value = moves[i] || ''; });
+        speciesPicker.setValue(entry.species || '');
+        targetSpecies = entry.species || '';
+        submitBtn.textContent = '更新覆蓋';
+        cancelBtn.style.display = '';
+        try { form.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+    }
 
     const list = el('div', { class: 'cm-list' });
     function renderList() {
@@ -578,15 +649,23 @@ function renderNicknameTab(container) {
             const statsText = entry.baseStats
                 ? `BST ${CreativeMode.calcBST(entry.baseStats)}`
                 : '沿用原種族值';
+            const movesText = Array.isArray(entry.moves) && entry.moves.length ? ' · 招式:' + entry.moves.join('/') : '';
             list.appendChild(el('div', { class: 'cm-list-item' }, [
                 el('span', {
-                    text: `「${entry.nickname}」${entry.species ? ' → ' + entry.species : ''} · ${statsText}${entry.ability ? ' · 特性:' + entry.ability : ''}`
+                    text: `「${entry.nickname}」${entry.species ? ' → ' + entry.species : ''} · ${statsText}${entry.ability ? ' · 特性:' + entry.ability : ''}${movesText}`
                 }),
-                el('button', {
-                    class: 'cm-btn danger',
-                    text: '刪除',
-                    onclick: () => { CreativeMode.removeNicknameOverride(key); renderList(); toast('已刪除：' + entry.nickname); }
-                })
+                el('div', { class: 'cm-row' }, [
+                    el('button', {
+                        class: 'cm-btn',
+                        text: '編輯',
+                        onclick: () => loadRule(entry)
+                    }),
+                    el('button', {
+                        class: 'cm-btn danger',
+                        text: '刪除',
+                        onclick: () => { CreativeMode.removeNicknameOverride(key); renderList(); toast('已刪除：' + entry.nickname); }
+                    })
+                ])
             ]));
         }
     }

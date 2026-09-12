@@ -282,6 +282,11 @@ function normalizeNicknameEntry(raw, fallbackSpecies) {
     if (Array.isArray(raw.types) && raw.types.length) out.types = clone(raw.types);
     const ability = raw.ability || raw.customAbility;
     if (ability) out.ability = ability;
+    const moves = raw.moves || raw.customMoves;
+    if (Array.isArray(moves)) {
+        const list = moves.map((move) => String(move || '').trim()).filter(Boolean).slice(0, 4);
+        if (list.length) out.moves = list;
+    }
     if (raw.note) out.note = raw.note;
     return out;
 }
@@ -651,6 +656,7 @@ const CreativeMode = {
                         nickname: entry.nickname,
                         customStats: clone(entry.baseStats || species.baseStats),
                         customAbility: entry.ability || undefined,
+                        customMoves: Array.isArray(entry.moves) && entry.moves.length ? clone(entry.moves) : undefined,
                         note: entry.note || undefined
                     }
                 ]
