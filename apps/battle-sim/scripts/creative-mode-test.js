@@ -123,8 +123,9 @@ function testNicknameOverride() {
     assertEqual(pkm.baseStats.spe, 132, 'nickname override spe applies');
     assertEqual(pkm.ability, 'Battle Bond', 'nickname override ability applies');
     assertEqual(pkm.nickname, '小智版甲賀忍蛙', 'nickname is preserved on instance');
-    assertEqual(pkm.moves.length, 3, 'nickname override replaces moves');
-    assertEqual(pkm.moves[1].name, 'Night Slash', 'nickname override move applies');
+    const rule = CreativeMode.resolveNickname('小智版甲賀忍蛙');
+    assert(Array.isArray(rule.moves) && rule.moves.length === 3, 'nickname override stores extra pool moves');
+    assertEqual(pkm.moves[0].name, 'Water Shuriken', 'nickname override does not replace battle moves');
 
     const normal = new Pokemon({ name: 'Greninja', lv: 50, moves: ['Water Shuriken'] });
     assertEqual(normal.baseStats.atk, 95, 'non-matching nickname keeps original stats');

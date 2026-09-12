@@ -634,10 +634,10 @@ function renderMovesTab(container) {
 
 function renderNicknameTab(container) {
     const form = el('div', { class: 'cm-section' });
-    form.appendChild(el('h3', { text: '暱稱導向的種族值 / 特性 / 招式覆蓋' }));
+    form.appendChild(el('h3', { text: '暱稱導向的種族值 / 特性 / 技能池覆蓋' }));
     form.appendChild(el('p', {
         class: 'cm-hint',
-        text: '當寶可夢的 nickname 等於設定值時，戰鬥時自動改用另一套種族值、特性與招式。可用於還原特殊型態（例如：小智版甲賀忍蛙）。'
+        text: '當寶可夢的 nickname 等於設定值時，戰鬥時自動改用另一套種族值與特性；這裡指定的招式會加入該寶可夢的「技能池」，可在調整招式時選用（不會直接取代現有招式）。'
     }));
 
     const nickname = el('input', { type: 'text', placeholder: '小智版甲賀忍蛙' });
@@ -669,7 +669,7 @@ function renderNicknameTab(container) {
     ]));
     form.appendChild(stats.node);
     form.appendChild(el('div', { class: 'cm-row' }, [
-        el('span', { class: 'cm-field', text: '替換招式（可選，最多 4；可輸入 ID 或名稱，留空沿用原招式）' }, [])
+        el('span', { class: 'cm-field', text: '加入技能池的招式（可選，最多 4；可輸入 ID 或名稱）' }, [])
     ]));
     form.appendChild(el('div', { class: 'cm-row' }, moveInputs.map((inp) => el('label', { class: 'cm-field', text: '' }, [inp]))));
     form.appendChild(moveList);

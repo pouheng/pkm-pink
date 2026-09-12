@@ -46,8 +46,38 @@
             }
         }
 
-        function showMovePoolModal(slotKey, species, lv, currentMoves, movePool, isLoading) {
-            const existingPanel = document.getElementById('move-pool-modal');
+        function getCreativeOverrideMoves(pkm) {
+            try {
+                const cm = root.CreativeMode;
+                if (!cm || typeof cm.resolveNickname !== 'function') return [];
+                const override = cm.resolveNickname(pkm && pkm.nickname);
+                if (!override || !Array.isArray(override.moves)) return [];
+                return override.moves
+                    .map((move) => String(move || '').trim())
+                    .filter(Boolean)
+                    .map((move) => ({ name: move, level: 0, displayName: move, override: true }));
+            } catch (error) {
+                return [];
+            }
+        }
+
+        async function buildMovePool(pkm, species, currentLv) {
+            const base = await fetchMovePool(species, currentLv);
+            const extra = getCreativeOverrideMoves(pkm);
+            if (!extra.length) return base;
+            const normalize = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const seen = new Set(base.map((move) => normalize(move.name)));
+            const merged = base.slice();
+            for (const move of extra) {
+                const key = normalize(move.name);
+                if (!key || seen.has(key)) continue;
+                seen.add(key);
+                merged.push(move);
+            }
+            return merged;
+        }
+
+        function showMovePoolModal(slotKey, species, lv, currentMoves, movePool, isLoading) {            const existingPanel = document.getElementById('move-pool-modal');
             if (existingPanel) existingPanel.remove();
             const displayName = root.translatePokemonNameApp(species);
             const moveKeys = ['move1', 'move2', 'move3', 'move4'];
@@ -74,7 +104,7 @@
                 const unequippedMoves = movePool.filter(m => !equippedMoves.includes(m.name.toLowerCase()));
                 poolHtml = unequippedMoves.map(move => `
                     <div class="mpm-pool-move" onclick="selectMoveFromPool('${slotKey}', '${move.name}')">
-                        <span class="mpm-pool-lv">Lv.${move.level}</span>
+                        <span class="mpm-pool-lv">${move.override ? '★' : 'Lv.' + move.level}</span>
                         <span class="mpm-pool-name">${move.displayName}</span>
                     </div>
                 `).join('');
@@ -115,7 +145,7 @@
             const species = pkm.species || pkm.name;
             const currentLv = pkm.lv || 1;
             const currentMoves = pendingMoveChanges[slotKey] || pkm.moves || {};
-            const movePool = await fetchMovePool(species, currentLv);
+            const movePool = await buildMovePool(pkm, species, currentLv);
             showMovePoolModal(slotKey, species, currentLv, currentMoves, movePool, false);
         }
 
@@ -154,7 +184,7 @@
             const currentLv = pkm.lv || 1;
             const currentMoves = pkm.moves || {};
             showMovePoolModal(slotKey, species, currentLv, currentMoves, null, true);
-            const movePool = await fetchMovePool(species, currentLv);
+            const movePool = await buildMovePool(pkm, species, currentLv);
             showMovePoolModal(slotKey, species, currentLv, currentMoves, movePool, false);
         };
 

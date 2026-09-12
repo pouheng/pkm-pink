@@ -65,7 +65,7 @@
     <script src="../shared/dashboard/data-helpers.js?v=20260520-dashboard-host-fix"></script>
     <script src="../shared/dashboard/bridge-client.js?v=20260520-dashboard-host-fix"></script>
     <script src="../shared/dashboard/ui-common.js?v=20260520-dashboard-host-fix"></script>
-    <script src="../shared/dashboard/move-pool.js?v=20260520-dashboard-host-fix"></script>
+    <script src="../shared/dashboard/move-pool.js?v=20260912-creative"></script>
     <script src="../shared/dashboard/box-manager.js?v=20260520-dashboard-host-fix"></script>
     <script src="app.js?v=20260520-dashboard-host-fix"></script>
 
@@ -74,7 +74,7 @@
     <script>
         window.__pkmOpenCreative = function () {
             try {
-                import('../battle-sim/ui/creative-panel.js?v=20260912f')
+                import('../battle-sim/ui/creative-panel.js?v=20260912g')
                     .then(function (mod) {
                         if (mod && typeof mod.openPanel === 'function') mod.openPanel();
                         else if (window.CreativePanel) window.CreativePanel.open();
@@ -96,7 +96,7 @@
             } catch (e) {}
         })();
     </script>
-    <script type="module" src="../battle-sim/ui/creative-panel.js?v=20260912f"></script>
+    <script type="module" src="../battle-sim/ui/creative-panel.js?v=20260912g"></script>
 
 </body>
 </html>

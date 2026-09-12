@@ -447,7 +447,7 @@ export class Pokemon {
     _initFromConfig(config) {
         const name = config.name;
         const level = config.lv || config.level || 50;
-        let moveNames = config.moves || [];
+        const moveNames = config.moves || [];
         
         // === 創造模式：暱稱導向的種族值 / 屬性 / 特性覆蓋 ===
         // 只有創造模式開啟且該暱稱有對應規則時才生效，否則完全不影響原流程。
@@ -479,9 +479,6 @@ export class Pokemon {
                 }
                 if (nicknameOverride.ability) {
                     effectiveConfig = Object.assign({}, config, { ability: nicknameOverride.ability });
-                }
-                if (Array.isArray(nicknameOverride.moves) && nicknameOverride.moves.length) {
-                    moveNames = nicknameOverride.moves.slice(0, 4);
                 }
                 if (nicknameOverride.species) {
                     effectiveName = data.name;
