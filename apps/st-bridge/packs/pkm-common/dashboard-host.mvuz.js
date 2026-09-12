@@ -27,6 +27,7 @@
     const BALL_COLLAPSED_CLASS = config.ballCollapsedClass || 'pkm-mvuz-ball-collapsed';
     const BALL_COLLAPSED_STORAGE_KEY = config.ballCollapsedStorageKey || 'pkm.mvuz.ballCollapsed';
     const STYLE_ID = config.styleId || 'pkm-mvuz-style';
+    const CREATIVE_FAB_ID = config.creativeFabId || 'pkm-creative-fab';
     const defaultGreetingSource = config.defaultGreetingSource || `greeting-${PRODUCT}`;
 
     try {
@@ -108,6 +109,16 @@
     }
 
     const PKM_URL = resolveDashboardUrl();
+
+    function resolveCreativeUrl() {
+      try {
+        const u = new URL(PKM_URL, ROOT.location?.href || undefined);
+        const base = u.origin + u.pathname.replace(/\/apps\/[^/]+\/index\.html$/, '');
+        return `${base}/apps/creative/index.html`;
+      } catch (_) {
+        return `${DEFAULT_APP_BASE_URL}/apps/creative/index.html`;
+      }
+    }
 
     function waitForJQuery(callback) {
       if (disposed) return;
@@ -1083,6 +1094,33 @@
           width: 18px;
           height: 18px;
         }
+        #${CREATIVE_FAB_ID} {
+          position: fixed;
+          top: 148px;
+          right: 20px;
+          z-index: 2147483645;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 12px;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 209, 102, 0.55);
+          background: rgba(20, 26, 40, 0.86);
+          color: #ffd166;
+          font: 700 13px/1 'M+PLUS Rounded 1c', 'Rubik', sans-serif;
+          letter-spacing: 1px;
+          cursor: pointer;
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.42);
+          transition: background 0.2s ease, transform 0.2s ease;
+        }
+        #${CREATIVE_FAB_ID}:hover {
+          background: rgba(30, 40, 60, 0.96);
+          transform: translateY(-2px);
+        }
+        #${CREATIVE_FAB_ID} svg {
+          width: 16px;
+          height: 16px;
+        }
         #${BALL_ID}.${BALL_COLLAPSED_CLASS} {
           right: 0;
           width: 30px;
@@ -1166,7 +1204,7 @@
     }
 
     function injectUi($) {
-      $(`#${BALL_ID}, #${OVERLAY_ID}, #${STYLE_ID}`).remove();
+      $(`#${BALL_ID}, #${OVERLAY_ID}, #${STYLE_ID}, #${CREATIVE_FAB_ID}`).remove();
       $('head').append(buildStyleTag());
 
       const ball = $('<div>')
@@ -1269,7 +1307,24 @@
 
       wrapper.append(iframe, creativeBtn, closeBtn);
       overlay.append(wrapper);
-      $('body').append(ball, overlay);
+
+      const creativeFab = $('<button>')
+        .attr('id', CREATIVE_FAB_ID)
+        .attr('type', 'button')
+        .attr('title', '創造模式（另開視窗）')
+        .attr('aria-label', '創造模式')
+        .html('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg><span>創造模式</span>');
+      creativeFab.on('click', () => {
+        const url = resolveCreativeUrl();
+        try {
+          const opened = ROOT.open(url, '_blank', 'noopener');
+          if (!opened) ROOT.location?.assign?.(url);
+        } catch (_) {
+          try { ROOT.location?.assign?.(url); } catch (__) {}
+        }
+      });
+
+      $('body').append(ball, overlay, creativeFab);
       dashboardChrome.iframe = iframe[0] || null;
       dashboardChrome.wrapper = wrapper[0] || null;
       dashboardChrome.overlay = overlay[0] || null;
@@ -1348,7 +1403,7 @@
     function unload() {
       disposed = true;
       try {
-        ROOT.jQuery?.(`#${BALL_ID}, #${OVERLAY_ID}, #${STYLE_ID}`).remove();
+        ROOT.jQuery?.(`#${BALL_ID}, #${OVERLAY_ID}, #${STYLE_ID}, #${CREATIVE_FAB_ID}`).remove();
         ROOT.jQuery?.(ROOT.document).off('keydown.pkmMvuz');
       } catch (_) {}
       dashboardChrome.iframe = null;

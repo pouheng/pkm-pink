@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PKM 創造模式</title>
+    <style>
+        html, body { margin: 0; padding: 0; background: #0f1424; }
+    </style>
+</head>
+<body>
+    <script type="module">
+        import { openPanel } from '../battle-sim/ui/creative-panel.js?v=20260912c';
+        try {
+            openPanel();
+        } catch (err) {
+            console.error('[PKM Creative] 開啟失敗:', err);
+            document.body.textContent = '創造模式載入失敗：' + (err && err.message || err);
+        }
+    </script>
+</body>
+</html>
