@@ -31,7 +31,7 @@ export function applyMoveSecondaryEffects(user, target, move, damageDealt = 0, b
     let logs = [];
     
     // 获取完整技能数据
-    const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
 
     const getBattleDisplayName = (pokemon) => pokemon?.displayCnName || pokemon?.cnName || pokemon?.name || '???';
@@ -377,7 +377,7 @@ export function applyMoveSecondaryEffects(user, target, move, damageDealt = 0, b
     if (fullMoveData.self && fullMoveData.self.sideCondition && battle) {
         if (typeof MoveEffects !== 'undefined' && MoveEffects.applySideCondition) {
             // 构造一个临时 move 对象，将 self.sideCondition 提升为顶层 + target 改为 allySide
-            const selfMoveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const selfMoveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const selfMoveData = { ...fullMoveData, sideCondition: fullMoveData.self.sideCondition, target: 'allySide' };
             const tempMoveObj = { name: move.name, _overrideMoveData: selfMoveData };
             const sideLogs = MoveEffects.applySideCondition(user, tempMoveObj, battle);

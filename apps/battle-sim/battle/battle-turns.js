@@ -324,7 +324,7 @@ export async function executePlayerTurn(p, e, move) {
     // =========================================================
     // Z-Move / Max Move 使用标记 (全场只能用一次)
     // =========================================================
-    const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const moveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
     
     // 检测并标记 Z 招式使用
@@ -555,7 +555,7 @@ export async function executeEnemyTurn(e, p, move) {
     // =========================================================
     // Z-Move / Max Move 使用标记 (全场只能用一次)
     // =========================================================
-    const eMoveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const eMoveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const eMoveData = (typeof MOVES !== 'undefined' && MOVES[eMoveId]) ? MOVES[eMoveId] : {};
     
     // 检测并标记 Z 招式使用

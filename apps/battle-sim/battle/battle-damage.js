@@ -52,7 +52,7 @@ export function applyDamage(attacker, defender, move, spriteIdRef) {
     
     if (defenderAbility === 'magicbounce' && isStatusMove && !hasMoldBreaker && !move._bounced) {
         // 【软编码】从 moves-data.js 读取 reflectable 标记
-        const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
         
         // 检查招式是否有 reflectable 标记
@@ -176,7 +176,7 @@ export function applyDamage(attacker, defender, move, spriteIdRef) {
         
         // 【关键修复】selfdestruct: "always" 的招式即使被守住也要死
         // Explosion, Self-Destruct, Misty Explosion 等
-        const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
         if (fullMoveData.selfdestruct === 'always') {
             attacker.currHp = 0;
@@ -240,7 +240,7 @@ export function applyDamage(attacker, defender, move, spriteIdRef) {
         }
         
         // 【关键修复】selfdestruct: "always" 的招式即使 MISS 也要死
-        const moveIdMiss = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const moveIdMiss = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         const fullMoveDataMiss = (typeof MOVES !== 'undefined' && MOVES[moveIdMiss]) ? MOVES[moveIdMiss] : {};
         if (fullMoveDataMiss.selfdestruct === 'always') {
             attacker.currHp = 0;
@@ -413,7 +413,7 @@ export function applyDamage(attacker, defender, move, spriteIdRef) {
         
         // 【受击解冻】火系招式或 thawsTarget 招式会解除目标的冰冻状态
         if (defender.status === 'frz' && defender.currHp > 0) {
-            const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
             const moveType = fullMoveData.type || move.type || 'Normal';
             const thawsTarget = fullMoveData.thawsTarget || false;
@@ -426,7 +426,7 @@ export function applyDamage(attacker, defender, move, spriteIdRef) {
         
         // === 播放打击音效 ===
         // 【修复】接触类招式（flags.contact）音效延迟到冲撞到位时播放，非接触类立即播放
-        const moveIdForSfx = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const moveIdForSfx = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         const fullMoveDataForSfx = (typeof MOVES !== 'undefined' && MOVES[moveIdForSfx]) ? MOVES[moveIdForSfx] : {};
         const isContactMove = fullMoveDataForSfx.flags && fullMoveDataForSfx.flags.contact;
         if (typeof window.playHitSFX === 'function' && !isContactMove) {

@@ -924,7 +924,7 @@ export const AbilityHandlers = {
         // 取消副作用但威力x1.3，这里简化处理
         onBasePower: (power, attacker, defender, move, battle) => {
             // 从 MOVES 数据库查找完整招式数据（move 对象可能不含 secondary 字段）
-            const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const fullData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
             // 如果招式有副作用，威力x1.3
             if (fullData.secondary || fullData.secondaries || move.secondary || move.secondaries) {
@@ -1023,7 +1023,7 @@ export const AbilityHandlers = {
     'Reckless': {
         onBasePower: (power, attacker, defender, move, battle) => {
             // 从 MOVES 数据库查找完整招式数据（move 对象可能不含 recoil 字段）
-            const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const fullData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
             if (fullData.recoil || fullData.hasCrashDamage || fullData.mindBlownRecoil ||
                 move.recoil || move.hasCrashDamage || move.mindBlownRecoil) {
@@ -1171,7 +1171,7 @@ export const AbilityHandlers = {
     'Pickpocket': {
         onDamageTaken: (pokemon, damage, source, logs, move) => {
             if (!move) return;
-            const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
             const isContact = fullMoveData.flags && fullMoveData.flags.contact;
             
@@ -2168,7 +2168,7 @@ export const AbilityHandlers = {
             // 自身使用的变化招式（替身、剑舞等 target='self'）不应被阻止
             if (move.cat === 'status' || move.category === 'Status') {
                 // 从 moves-data.js 读取招式目标类型
-                const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
                 const fullData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
                 const moveTarget = move.target || fullData.target || 'normal';
                 // 自我/队友目标的招式不受黄金之躯影响
@@ -2289,7 +2289,7 @@ export const AbilityHandlers = {
             if (!baseId.includes('aegislash')) return;
             
             // 获取招式分类
-            const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
             const category = fullMoveData.category || move.category || (move.cat === 'phys' ? 'Physical' : move.cat === 'spec' ? 'Special' : 'Status');
             const isAttack = category === 'Physical' || category === 'Special';
@@ -2363,7 +2363,7 @@ export const AbilityHandlers = {
             if (baseId.includes('noice')) return damage;
             
             // 获取招式分类
-            const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
             const category = fullMoveData.category || move.category || (move.cat === 'phys' ? 'Physical' : 'Special');
             

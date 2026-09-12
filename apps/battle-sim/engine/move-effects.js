@@ -30,7 +30,7 @@ function getMovePriority(move, user = null, target = null) {
         return move.priority;
     }
     
-    const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
     
     // 从数据中读取优先级
@@ -495,7 +495,7 @@ function processStatusDamage(pokemon) {
  */
 function processMoveStatusEffects(user, target, move) {
     const logs = [];
-    const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
     
     // === 【粉末类招式免疫检查】===
@@ -593,7 +593,7 @@ function processMoveStatusEffects(user, target, move) {
  * @returns {object|null} { damage, message } 或 null（非固定伤害技能）
  */
 function checkFixedDamageMove(attacker, defender, move) {
-    const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
     
     // damage 字段表示固定伤害
@@ -659,7 +659,7 @@ function checkFixedDamageMove(attacker, defender, move) {
  * @returns {object|null} { success, damage, message } 或 null
  */
 function checkOHKOMove(attacker, defender, move) {
-    const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
     
     // ohko 字段标记一击必杀
@@ -797,7 +797,7 @@ function getTerrainModifier(terrain, moveType, isGrounded = true) {
  * @returns {boolean}
  */
 function hasMoveFlag(move, flag) {
-    const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
     
     return !!(fullMoveData.flags && fullMoveData.flags[flag]);
@@ -850,7 +850,7 @@ function isSoundMove(move) {
  */
 function applySideCondition(user, move, battle, overrideCondition = null, overrideTarget = null) {
     const logs = [];
-    const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
     
     const conditionId = overrideCondition || fullMoveData.sideCondition;
@@ -1427,7 +1427,7 @@ function applyVolatileStatus(user, target, move) {
             // 【修复】Swagger/Flatter 先提升能力，再施加混乱
             // Swagger: 目标攻击+2 + 混乱, Flatter: 目标特攻+1 + 混乱
             {
-                const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
                 const fullData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
                 if (fullData.boosts) {
                     if (typeof window !== 'undefined' && typeof window.changeStats === 'function') {
@@ -1545,7 +1545,7 @@ function applyVolatileStatus(user, target, move) {
 function canUseMove(pokemon, move) {
     if (!pokemon.volatile) return { canUse: true, reason: null };
     
-    const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
     const category = fullMoveData.category || move.category || move.cat || 'Physical';
     
@@ -1972,7 +1972,7 @@ function applyTrappingMove(attacker, defender, move) {
     const logs = [];
     
     // 【软编码】从 moves-data.js 读取技能数据
-    const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
     
     // 检查是否为束缚招式（通过 volatileStatus 字段判定）
@@ -2021,7 +2021,7 @@ function applyMeanLook(attacker, defender, move) {
     const logs = [];
     
     // 【软编码】从 moves-data.js 读取技能数据
-    const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
     
     // 检查是否为抓人招式（通过多种方式判定）

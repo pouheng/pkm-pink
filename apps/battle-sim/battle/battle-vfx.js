@@ -420,7 +420,7 @@ function playAttackVFX(attackerSpriteId, defenderSpriteId, move, result) {
     const isCrit = result.isCrit || false;
 
     // 判断接触/非接触
-    const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
     const isContact = !!(fullMoveData.flags && fullMoveData.flags.contact);
 

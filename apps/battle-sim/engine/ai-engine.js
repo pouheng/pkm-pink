@@ -1360,7 +1360,7 @@ function rankMovesByScore(attacker, defender, aiParty = null) {
  * @returns {MoveData}
  */
 function getMergedMoveData(move) {
-    const id = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const id = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     let merged = {
         ...move,
         type: move.type || 'Normal',
@@ -1492,7 +1492,7 @@ function evaluateMoveImpact(attacker, defender, move) {
     }
     
     // 获取技能分类
-    const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
     const category = (fullMoveData.category || move.cat || '').toLowerCase();
     const isAttackMove = category !== 'status' && (move.power > 0 || move.basePower > 0);

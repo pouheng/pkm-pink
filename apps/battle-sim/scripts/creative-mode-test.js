@@ -177,7 +177,7 @@ function testLegacyNicknameFormat() {
 function testCustomMoveEffects() {
     CreativeMode.addCustomMove({
         id: 'bouncybubble',
-        name: 'Bouncy Bubble',
+        name: '活活氣泡',
         type: 'Water',
         category: 'Special',
         basePower: 60,
@@ -187,11 +187,12 @@ function testCustomMoveEffects() {
         description: '回復造成傷害的50%'
     });
     const md = getMoveData('Bouncy Bubble');
-    assertEqual(md.name, 'Bouncy Bubble', 'custom move resolves by name');
+    assertEqual(md.name, '活活氣泡', 'custom move resolves by id despite non-ascii name');
     assert(Array.isArray(md.drain) && md.drain[0] === 1 && md.drain[1] === 2, 'custom move drain effect preserved');
     assertEqual(md.power, 60, 'custom move power');
     const pkm = new Pokemon({ name: 'Eevee', lv: 50, moves: ['Bouncy Bubble'] });
-    assertEqual(pkm.moves[0].name, 'Bouncy Bubble', 'pokemon can use custom move with effect');
+    assertEqual(pkm.moves[0].name, '活活氣泡', 'pokemon can use custom move with effect');
+    assertEqual(pkm.moves[0].id, 'bouncybubble', 'custom move keeps lookup id for effect resolution');
     CreativeMode.removeCustomMove('bouncybubble');
 }
 

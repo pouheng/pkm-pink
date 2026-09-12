@@ -29,7 +29,7 @@ export function calcDamage(attacker, defender, move, options = {}) {
     const battle = (typeof window !== 'undefined') ? window.battle : null;
     
     // 获取完整技能数据
-    const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
     
     // === 【特性钩子】onModifyMove - 修改招式属性/威力 (Liquid Voice 等) ===

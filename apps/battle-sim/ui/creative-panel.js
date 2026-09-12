@@ -53,9 +53,17 @@ function injectStyles() {
     const style = el('style', { id: STYLE_ID });
     style.textContent = `
     .cm-launcher{position:fixed;left:14px;bottom:14px;z-index:99998;background:#1b1e2b;color:#ffd166;
-        border:1px solid #ffd166;border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer;
-        font-family:inherit;letter-spacing:1px;box-shadow:0 4px 18px rgba(0,0,0,.45)}
+        border:1px solid #ffd166;border-radius:10px;padding:7px 8px 7px 14px;font-weight:700;cursor:pointer;
+        font-family:inherit;letter-spacing:1px;box-shadow:0 4px 18px rgba(0,0,0,.45);display:flex;align-items:center;gap:6px}
     .cm-launcher.active{background:#ffd166;color:#1b1e2b}
+    .cm-launcher .cm-launcher-fold{appearance:none;display:flex;align-items:center;justify-content:center;
+        width:20px;height:20px;padding:0;border:1px solid rgba(255,255,255,.3);border-radius:7px;
+        background:rgba(0,0,0,.18);color:inherit;cursor:pointer;transition:transform .2s ease,background .2s ease}
+    .cm-launcher .cm-launcher-fold:hover{background:rgba(0,0,0,.35)}
+    .cm-launcher .cm-launcher-fold svg{width:12px;height:12px}
+    .cm-launcher.collapsed{left:0;padding:8px;border-radius:0 10px 10px 0;opacity:.82}
+    .cm-launcher.collapsed .cm-launcher-label{display:none}
+    .cm-launcher.collapsed .cm-launcher-fold{transform:rotate(180deg)}
     .cm-overlay{position:fixed;inset:0;z-index:99999;background:rgba(6,8,16,.72);display:flex;
         align-items:center;justify-content:center;font-family:'Rubik','M+PLUS Rounded 1c',sans-serif}
     .cm-window{width:min(920px,94vw);height:min(720px,92vh);background:#141827;color:#e8ecf5;
@@ -1117,7 +1125,7 @@ function refreshPanel() {
         const tab = TABS.find((t) => t.id === activeTab) || TABS[0];
         tab.render(body);
     }
-    if (launcherEl) launcherEl.className = 'cm-launcher' + (CreativeMode.isEnabled() ? ' active' : '');
+    applyLauncherClass();
 }
 
 /**
@@ -1182,14 +1190,50 @@ function closePanel() {
     panelEl = null;
 }
 
+const LAUNCHER_COLLAPSED_KEY = 'pkm.creative.launcherCollapsed';
+let launcherCollapsed = false;
+
+function applyLauncherClass() {
+    if (!launcherEl) return;
+    launcherEl.className = 'cm-launcher'
+        + (CreativeMode.isEnabled() ? ' active' : '')
+        + (launcherCollapsed ? ' collapsed' : '');
+}
+
+function setLauncherCollapsed(collapsed) {
+    launcherCollapsed = collapsed;
+    applyLauncherClass();
+    try { localStorage.setItem(LAUNCHER_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (e) {}
+}
+
 function createLauncher() {
     if (launcherEl) return;
-    launcherEl = el('button', {
-        class: 'cm-launcher' + (CreativeMode.isEnabled() ? ' active' : ''),
-        text: '創造模式',
+    try { launcherCollapsed = localStorage.getItem(LAUNCHER_COLLAPSED_KEY) === '1'; } catch (e) { launcherCollapsed = false; }
+    launcherEl = el('div', {
+        class: 'cm-launcher',
         title: '開啟創造模式控制台',
-        onclick: openPanel
+        role: 'button',
+        tabindex: '0'
+    }, [
+        el('span', { class: 'cm-launcher-label', text: '創造模式' }),
+        el('button', {
+            class: 'cm-launcher-fold',
+            type: 'button',
+            title: '收起到側邊',
+            'aria-label': '收起到側邊',
+            html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>',
+            onclick: (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setLauncherCollapsed(!launcherCollapsed);
+            }
+        })
+    ]);
+    launcherEl.addEventListener('click', (event) => {
+        if (event.target && event.target.closest && event.target.closest('.cm-launcher-fold')) return;
+        openPanel();
     });
+    applyLauncherClass();
     document.body.appendChild(launcherEl);
 }
 
@@ -1201,7 +1245,7 @@ function init() {
         createLauncher();
     }
     CreativeMode.onChange(() => {
-        if (launcherEl) launcherEl.className = 'cm-launcher' + (CreativeMode.isEnabled() ? ' active' : '');
+        applyLauncherClass();
         if (panelEl) refreshPanel();
     });
 }

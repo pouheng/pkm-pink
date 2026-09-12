@@ -2726,7 +2726,7 @@ const ItemEffects = {
             'machpunch', 'focuspunch', 'cometpunch', 'drainpunch', 'dynamicpunch',
             'hammerarm', 'poweruppunch', 'shadowpunch', 'skyuppercut', 'bulletpunch',
             'meteormash', 'dizzypunch', 'ragefist', 'surgingstrikes', 'wickedblow'];
-        const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         if (punchMoves.includes(moveId)) return 1.1;
         
         return 1;

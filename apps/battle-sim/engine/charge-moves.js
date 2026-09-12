@@ -418,7 +418,7 @@ export function checkBeakBlastBurn(user, attacker, move, logs) {
     if (!config || !config.contactBurn) return false;
     
     // 检查是否为接触类招式
-    const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
     const isContact = fullMoveData.flags?.contact || move.contact;
     

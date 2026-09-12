@@ -728,9 +728,11 @@ export class Pokemon {
             const id = (mn || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const rawData = typeof MOVES !== 'undefined' ? MOVES[id] : null;
             let md = getMoveData(mn);
+            let lookupId = id;
             if (!rawData) {
                 const randomFallback = FALLBACK_MOVES[Math.floor(Math.random() * FALLBACK_MOVES.length)];
                 md = getMoveData(randomFallback);
+                lookupId = (md.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             }
             // 使用 Locale 工具获取技能中文名
             const cnName = (typeof window !== 'undefined' && window.Locale) ? window.Locale.get(md.name) : md.name;
@@ -738,6 +740,7 @@ export class Pokemon {
             // 【PP系统】从原始数据获取 PP 值
             const basePP = rawData ? (rawData.pp || 5) : 5;
             return { 
+                id: lookupId,                 // 【創造模式】保留查表 id，供中文自訂招式查找附加效果
                 name: md.name, 
                 cn: cnName, 
                 type: md.type, 
@@ -1396,7 +1399,7 @@ export function checkCanMove(pokemon, move = null) {
         // 4b. 自解冻招式检查 (defrost flag)
         // 使用带有 defrost 标记的招式可以立即解冻并攻击
         if (move) {
-            const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
             if (fullMoveData.flags && fullMoveData.flags.defrost) {
                 pokemon.status = null;
@@ -1432,7 +1435,7 @@ export function checkCanMove(pokemon, move = null) {
     
     // 5a. 挑衅 (Taunt) - 无法使用变化技
     if (pokemon.volatile && pokemon.volatile.taunt > 0 && move) {
-        const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
         const category = fullMoveData.category || move.category || move.cat;
         if (category === 'Status') {
@@ -1446,7 +1449,7 @@ export function checkCanMove(pokemon, move = null) {
         const itemData = (typeof window !== 'undefined' && typeof window.getItem === 'function') 
             ? window.getItem(pokemon.item) : null;
         if (itemData && itemData.disableStatus) {
-            const moveId = (move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const moveId = (move.id || move.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const fullMoveData = (typeof MOVES !== 'undefined' && MOVES[moveId]) ? MOVES[moveId] : {};
             const category = fullMoveData.category || move.category || move.cat;
             if (category === 'Status') {
