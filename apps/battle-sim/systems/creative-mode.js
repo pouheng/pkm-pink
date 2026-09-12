@@ -42,6 +42,51 @@ export const POKEMON_TYPES = [
 ];
 
 // ============================================
+// 預設資料包（創造模式首次開啟時自動載入）
+// ============================================
+export const DEFAULT_CREATIVE_DATA = {
+    customMoves: {
+        bouncybubble: {
+            num: 0,
+            name: '活活氣泡',
+            type: 'Water',
+            category: 'Special',
+            basePower: 90,
+            accuracy: 100,
+            pp: 15,
+            priority: 0,
+            target: 'normal',
+            flags: { protect: 1, mirror: 1, metronome: 1, heal: 1 },
+            drain: [50, 100],
+            description: '攻擊目標造成傷害，自身的ＨＰ恢復「造成的傷害×50%」。'
+        },
+        buzzybuzz: {
+            num: 0,
+            name: '麻麻電擊',
+            type: 'Electric',
+            category: 'Special',
+            basePower: 90,
+            accuracy: 100,
+            pp: 15,
+            priority: 0,
+            target: 'normal',
+            flags: { protect: 1, mirror: 1, metronome: 1 },
+            secondary: { chance: 100, status: 'par' },
+            description: '麻麻電擊有100%的機率使目標陷入麻痺狀態。'
+        }
+    },
+    nicknameOverrides: {
+        '搭檔伊布': {
+            nickname: '搭檔伊布',
+            species: 'eevee',
+            baseStats: { hp: 65, atk: 75, def: 70, spa: 65, spd: 85, spe: 75 },
+            moves: ['bouncybubble', 'buzzybuzz'],
+            note: 'Let\'s Go 搭檔伊布'
+        }
+    }
+};
+
+// ============================================
 // 內部工具
 // ============================================
 
@@ -245,7 +290,10 @@ function loadFromStorage() {
         console.warn('[CREATIVE] localStorage 讀取失敗:', e);
         return;
     }
-    if (!raw) return;
+    if (!raw) {
+        seedDefaults();
+        return;
+    }
     try {
         const parsed = JSON.parse(raw);
         state.enabled = !!parsed.enabled;
@@ -254,9 +302,20 @@ function loadFromStorage() {
         state.customSpecies = parsed.customSpecies || {};
         state.customMoves = parsed.customMoves || {};
         state.nicknameOverrides = parsed.nicknameOverrides || {};
+        if (!Object.keys(state.customMoves).length && !Object.keys(state.nicknameOverrides).length) {
+            seedDefaults();
+        }
     } catch (e) {
         console.warn('[CREATIVE] 存檔解析失敗，已忽略:', e);
     }
+}
+
+/**
+ * 將預設資料包（搭檔伊布）併入目前設定。
+ */
+function seedDefaults() {
+    state.customMoves = Object.assign({}, state.customMoves, clone(DEFAULT_CREATIVE_DATA.customMoves));
+    state.nicknameOverrides = Object.assign({}, state.nicknameOverrides, clone(DEFAULT_CREATIVE_DATA.nicknameOverrides));
 }
 
 function saveToStorage() {
@@ -678,6 +737,14 @@ const CreativeMode = {
     },
 
     // ---- 重置 ----
+    loadDefaults() {
+        seedDefaults();
+        if (state.enabled) applyAll();
+        saveToStorage();
+        emitChange();
+        return true;
+    },
+
     resetAll() {
         restoreAll();
         state.species = {};

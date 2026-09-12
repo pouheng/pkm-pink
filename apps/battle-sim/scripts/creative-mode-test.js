@@ -195,6 +195,19 @@ function testCustomMoveEffects() {
     CreativeMode.removeCustomMove('bouncybubble');
 }
 
+function testDefaultPack() {
+    CreativeMode.resetAll();
+    CreativeMode.loadDefaults();
+    const overrides = CreativeMode.getNicknameOverrides();
+    assert(overrides['搭檔伊布'], 'default nickname override loaded');
+    const moves = CreativeMode._getState().customMoves;
+    assert(moves.bouncybubble && moves.buzzybuzz, 'default custom moves loaded');
+    assertEqual(moves.bouncybubble.drain[0], 50, 'default bouncy bubble drain preserved');
+    assertEqual(overrides['搭檔伊布'].moves.length, 2, 'default partner eevee pool moves');
+    assertEqual(overrides['搭檔伊布'].baseStats.atk, 75, 'default partner eevee stats');
+    CreativeMode.resetAll();
+}
+
 async function main() {
     testBaseline();
     testSpeciesOverride();
@@ -204,6 +217,7 @@ async function main() {
     testCustomMoveEffects();
     testExportImport();
     testLegacyNicknameFormat();
+    testDefaultPack();
 
     if (failures.length > 0) {
         console.error(`\n[FAIL] creative-mode-test failed: ${passedTests}/${totalTests} passed`);

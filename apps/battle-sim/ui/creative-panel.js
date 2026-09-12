@@ -785,6 +785,17 @@ function renderDataTab(container) {
         class: 'cm-hint',
         text: '關閉時會完整還原 POKEDEX / MOVES，引擎行為與原專案相同。設定本身會保留，下次開啟時自動重新套用。'
     }));
+    toggleSection.appendChild(el('div', { class: 'cm-row' }, [
+        el('button', {
+            class: 'cm-btn',
+            text: '載入預設資料（搭檔伊布）',
+            onclick: () => {
+                CreativeMode.loadDefaults();
+                toast('已載入預設資料：活活氣泡 / 麻麻電擊 / 搭檔伊布');
+                refreshPanel();
+            }
+        })
+    ]));
     container.appendChild(toggleSection);
 
     const exportSection = el('div', { class: 'cm-section' });
