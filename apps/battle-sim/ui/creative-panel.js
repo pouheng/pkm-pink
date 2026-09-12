@@ -818,5 +818,25 @@ if (typeof document !== 'undefined') {
     }
 }
 
+// 對外唤出介面：供懸浮球擴充（SillyTavern 端）以 postMessage 或全域函式呼叫
+if (typeof window !== 'undefined') {
+    window.CreativePanel = {
+        open: openPanel,
+        close: closePanel,
+        toggle: () => (panelEl ? closePanel() : openPanel())
+    };
+    window.addEventListener('pkm:open-creative', () => { openPanel(); });
+    window.addEventListener('pkm:toggle-creative', () => { if (panelEl) closePanel(); else openPanel(); });
+    window.addEventListener('message', (event) => {
+        const data = event && event.data;
+        if (!data || typeof data !== 'object') return;
+        if (data.type === 'pkm-open-creative') openPanel();
+        else if (data.type === 'pkm-toggle-creative') {
+            if (panelEl) closePanel();
+            else openPanel();
+        }
+    });
+}
+
 export { openPanel, closePanel };
 export default { openPanel, closePanel };
