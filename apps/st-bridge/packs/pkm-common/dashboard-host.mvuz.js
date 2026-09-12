@@ -1249,7 +1249,11 @@
       creativeBtn.on('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
-        const send = () => postToIframe({ type: 'pkm-open-creative', product: PRODUCT });
+        const send = () => {
+          const ok = postToIframe({ type: 'pkm-open-creative', product: PRODUCT });
+          console.log('[PKM Creative] open message sent:', ok);
+        };
+        console.log('[PKM Creative] button clicked, iframeInitialized =', iframeInitialized);
         if (!iframeInitialized) {
           iframe.one('load', send);
         } else {

@@ -840,8 +840,10 @@ if (typeof window !== 'undefined') {
     window.addEventListener('message', (event) => {
         const data = event && event.data;
         if (!data || typeof data !== 'object') return;
-        if (data.type === 'pkm-open-creative') openPanel();
-        else if (data.type === 'pkm-toggle-creative') {
+        if (data.type === 'pkm-open-creative') {
+            console.log('[PKM Creative] panel received open request');
+            openPanel();
+        } else if (data.type === 'pkm-toggle-creative') {
             if (panelEl) closePanel();
             else openPanel();
         }
