@@ -31,6 +31,9 @@
             <div class="tab" data-t="cfg" onclick="switchPage('settings', this)">
                 <span class="t-txt">CONFIG</span>
             </div>
+            <div class="tab" onclick="window.__pkmOpenCreative && window.__pkmOpenCreative()">
+                <span class="t-txt">CREATIVE</span>
+            </div>
         </div>
 
         <!-- MAIN: 内容滚动窗 -->
@@ -66,8 +69,33 @@
     <script src="../shared/dashboard/box-manager.js?v=20260520-dashboard-host-fix"></script>
     <script src="app.js?v=20260520-dashboard-host-fix"></script>
 
-    <!-- 創造模式：由懸浮球儀表板外框的按鈕唤出，與戰鬥 app 共用 localStorage -->
+    <!-- 創造模式：可由儀表板導航列、懸浮球外框按鈕、或 ?creative=1 開啟 -->
     <script>window.PKM_CREATIVE_HIDE_LAUNCHER = true;</script>
+    <script>
+        window.__pkmOpenCreative = function () {
+            try {
+                import('../battle-sim/ui/creative-panel.js?v=20260912c')
+                    .then(function (mod) {
+                        if (mod && typeof mod.openPanel === 'function') mod.openPanel();
+                        else if (window.CreativePanel) window.CreativePanel.open();
+                    })
+                    .catch(function (err) { console.error('[PKM Creative] 開啟失敗:', err); });
+            } catch (err) { console.error('[PKM Creative] 開啟失敗:', err); }
+        };
+        (function () {
+            try {
+                var params = new URLSearchParams(location.search);
+                var hash = (location.hash || '').replace('#', '');
+                if (params.get('creative') === '1' || hash === 'creative') {
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', function () { window.__pkmOpenCreative(); });
+                    } else {
+                        window.__pkmOpenCreative();
+                    }
+                }
+            } catch (e) {}
+        })();
+    </script>
     <script type="module" src="../battle-sim/ui/creative-panel.js?v=20260912c"></script>
 
 </body>
