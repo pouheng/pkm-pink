@@ -183,6 +183,49 @@ function calculateBestZForPokemon(pokemon) {
 }
 
 /**
+ * 創造模式：依「對應 Z 結晶（道具）+ 基底招式」尋找自訂 Z 招式
+ * @param {string} baseMoveId - 基底招式 ID
+ * @param {Object} pokemon
+ * @returns {Object|null}
+ */
+function findCustomZMove(baseMoveObj, pokemon) {
+    try {
+        const cm = (typeof window !== 'undefined') ? window.CreativeMode : null;
+        if (!cm || typeof cm.isEnabled !== 'function' || !cm.isEnabled()) return null;
+        const state = (typeof cm._getState === 'function') ? cm._getState() : null;
+        const customMoves = state && state.customMoves;
+        if (!customMoves) return null;
+
+        const itemName = String(pokemon.item || '').trim().toLowerCase();
+        const itemNorm = itemName.replace(/[^a-z0-9]/g, '');
+        const baseName = String(baseMoveObj.id || baseMoveObj.name || '').trim().toLowerCase();
+        const baseNorm = baseName.replace(/[^a-z0-9]/g, '');
+
+        for (const id of Object.keys(customMoves)) {
+            const m = customMoves[id];
+            if (!m || !m.isZ) continue;
+            const zBaseRaw = String(m.zBaseMove || '').trim().toLowerCase();
+            const zBaseNorm = zBaseRaw.replace(/[^a-z0-9]/g, '');
+            if (!(zBaseRaw === baseName || (zBaseNorm && zBaseNorm === baseNorm))) continue;
+            const zItemRaw = String(m.isZ || '').trim().toLowerCase();
+            const zItemNorm = zItemRaw.replace(/[^a-z0-9]/g, '');
+            if (zItemRaw === itemName || (zItemNorm && zItemNorm === itemNorm)) {
+                return {
+                    name: m.name,
+                    id: id,
+                    type: m.type || 'Normal',
+                    power: m.basePower || 0,
+                    isExclusive: true,
+                    custom: true,
+                    cn: m.name
+                };
+            }
+        }
+    } catch (e) {}
+    return null;
+}
+
+/**
  * 获取招式对应的 Z 招式名称 (单一 Z 锁定策略)
  * @param {Object} baseMoveObj - 原始招式对象
  * @param {Object} pokemon - 宝可梦对象
@@ -197,8 +240,12 @@ function getZMoveTarget(baseMoveObj, pokemon) {
     if (baseMoveObj.category === 'Status' || baseMoveObj.cat === 'status') return null;
     
     // 准备 Key
-    const moveId = (baseMoveObj.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const moveId = (baseMoveObj.id || baseMoveObj.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const moveType = baseMoveObj.type || 'Normal';
+
+    // 創造模式自訂 Z 招式優先
+    const customZ = findCustomZMove(baseMoveObj, pokemon);
+    if (customZ) return customZ;
     // 注意：不过滤 ultra，因为 Necrozma-Ultra 需要保留完整名称来匹配专属 Z
     const speciesRoot = (pokemon.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/(partner|alola|galar|gmax|mega|cap|duskmane|dawnwings)/g, '');
     

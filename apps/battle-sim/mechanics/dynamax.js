@@ -108,6 +108,41 @@ function getGMaxFactor(pokemon) {
 }
 
 /**
+ * 創造模式：依「G-Max 物種 + 屬性」尋找自訂極巨化招式
+ */
+function findCustomMaxMove(moveType, pokemon) {
+    try {
+        const cm = (typeof window !== 'undefined') ? window.CreativeMode : null;
+        if (!cm || typeof cm.isEnabled !== 'function' || !cm.isEnabled()) return null;
+        const state = (typeof cm._getState === 'function') ? cm._getState() : null;
+        const customMoves = state && state.customMoves;
+        if (!customMoves) return null;
+        const speciesName = String(pokemon.name || '').trim().toLowerCase();
+        const speciesId = speciesName.replace(/[^a-z0-9]/g, '');
+        for (const id of Object.keys(customMoves)) {
+            const m = customMoves[id];
+            if (!m || !m.isMax) continue;
+            if ((m.type || 'Normal') !== moveType) continue;
+            if (typeof m.isMax === 'string') {
+                const targetRaw = String(m.isMax).trim().toLowerCase();
+                const targetNorm = targetRaw.replace(/[^a-z0-9]/g, '');
+                if (!(targetRaw === speciesName || (targetNorm && targetNorm === speciesId))) continue;
+            }
+            return {
+                name: m.name,
+                id,
+                type: moveType,
+                power: m.basePower || 130,
+                isGMax: typeof m.isMax === 'string',
+                custom: true,
+                cn: m.name
+            };
+        }
+    } catch (e) {}
+    return null;
+}
+
+/**
  * 获取招式对应的极巨化招式名称
  * @param {Object} baseMoveObj - 原始招式对象
  * @param {Object} pokemon - 宝可梦对象
@@ -129,6 +164,10 @@ function getMaxMoveTarget(baseMoveObj, pokemon) {
     
     const moveType = baseMoveObj.type || 'Normal';
     const basePower = baseMoveObj.basePower || baseMoveObj.power || 60;
+
+    // 創造模式自訂極巨化招式優先
+    const customMax = findCustomMaxMove(moveType, pokemon);
+    if (customMax) return customMax;
     
     // === 核心修改：优先查阅 GMAX_SPECIES_DATA 表 ===
     const gmaxFactor = getGMaxFactor(pokemon);

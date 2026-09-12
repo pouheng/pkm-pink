@@ -227,6 +227,9 @@ function testDefaultPack() {
     assertEqual(overrides['搭檔伊布'].item, '羈絆圍巾', 'default partner eevee holds Bond Scarf');
     assert(moves.rainbownebulanova && moves.rainbownebulanova.self && moves.rainbownebulanova.self.boosts.def === 1, 'default rainbow nebula nova self boosts');
     assertEqual(moves.rainbownebulanova.accuracy, true, 'default rainbow nebula nova is sure-hit');
+    assertEqual(moves.rainbownebulanova.isZ, '羈絆圍巾', 'default rainbow nebula nova is a Z move');
+    assertEqual(moves.rainbownebulanova.zBaseMove, 'lastresort', 'default rainbow nebula nova base move');
+    assertEqual(overrides['搭檔伊布'].mechanic, 'zmove', 'default partner eevee is set to Z-move');
     assertEqual(overrides['搭檔伊布'].baseStats.atk, 75, 'default partner eevee stats');
     CreativeMode.resetAll();
 }

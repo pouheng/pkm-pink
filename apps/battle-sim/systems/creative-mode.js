@@ -85,8 +85,10 @@ export const DEFAULT_CREATIVE_DATA = {
             priority: 0,
             target: 'normal',
             flags: { protect: 1, mirror: 1, metronome: 1 },
+            isZ: '羈絆圍巾',
+            zBaseMove: 'lastresort',
             self: { boosts: { def: 1, spd: 1, spe: 1 } },
-            description: '必中。招式發動後，自己的防禦、特防與速度各提升 1 級（羈絆防護）。'
+            description: 'Z 招式（羈絆圍巾）。必中。招式發動後，自己的防禦、特防與速度各提升 1 級（羈絆防護）。'
         }
     },
     nicknameOverrides: {
@@ -95,7 +97,8 @@ export const DEFAULT_CREATIVE_DATA = {
             species: 'eevee',
             baseStats: { hp: 65, atk: 75, def: 70, spa: 65, spd: 85, spe: 75 },
             item: '羈絆圍巾',
-            moves: ['bouncybubble', 'buzzybuzz', 'rainbownebulanova'],
+            mechanic: 'zmove',
+            moves: ['bouncybubble', 'buzzybuzz', 'lastresort'],
             note: 'Let\'s Go 搭檔伊布（攜帶伊布Z，珍藏可昇華為九彩昇華齊聚頂）'
         }
     }
@@ -576,6 +579,9 @@ const CreativeMode = {
         if (entry.self && typeof entry.self === 'object') {
             normalized.self = clone(entry.self);
         }
+        if (entry.isZ) normalized.isZ = String(entry.isZ);
+        if (entry.zBaseMove) normalized.zBaseMove = String(entry.zBaseMove);
+        if (entry.isMax !== undefined && entry.isMax !== null) normalized.isMax = entry.isMax;
         if (entry.description) normalized.description = String(entry.description);
         state.customMoves[id] = normalized;
         if (state.enabled) applyCustomMove(id);

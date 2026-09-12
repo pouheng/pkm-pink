@@ -337,6 +337,49 @@ function moveEffectsEditor(initial) {
     };
 }
 
+function moveKindEditor(initial) {
+    const src = initial || {};
+    const kind = el('select');
+    for (const pair of [['normal', '普通招式'], ['z', 'Z 招式'], ['max', '極巨化招式']]) {
+        kind.appendChild(el('option', { value: pair[0], text: pair[1] }));
+    }
+    kind.value = src.isMax ? 'max' : (src.isZ ? 'z' : 'normal');
+    const zItem = el('input', { type: 'text', placeholder: '對應 Z 結晶／道具（例：羈絆圍巾）', value: src.isZ || '' });
+    const zBase = el('input', { type: 'text', placeholder: '基底招式 ID（例：lastresort）', value: src.zBaseMove || '' });
+    const maxSpecies = el('input', { type: 'text', placeholder: 'G-Max 專屬物種 ID（可留空＝通用 Max）', value: (typeof src.isMax === 'string' ? src.isMax : '') });
+
+    const node = el('div', { class: 'cm-row' }, [
+        el('label', { class: 'cm-field', text: '招式類型' }, [kind]),
+        el('label', { class: 'cm-field', text: '對應 Z 結晶（Z 招式用）' }, [zItem]),
+        el('label', { class: 'cm-field', text: '基底招式（Z 招式用）' }, [zBase]),
+        el('label', { class: 'cm-field', text: 'G-Max 物種（可選）' }, [maxSpecies])
+    ]);
+
+    return {
+        node,
+        build() {
+            const out = {};
+            if (kind.value === 'z') {
+                const zi = zItem.value.trim();
+                const zb = zBase.value.trim();
+                if (zi) out.isZ = zi;
+                if (zb) out.zBaseMove = zb;
+            } else if (kind.value === 'max') {
+                const ms = maxSpecies.value.trim();
+                out.isMax = ms || true;
+            }
+            return out;
+        },
+        set(values) {
+            const v = values || {};
+            kind.value = v.isMax ? 'max' : (v.isZ ? 'z' : 'normal');
+            zItem.value = v.isZ || '';
+            zBase.value = v.zBaseMove || '';
+            maxSpecies.value = (typeof v.isMax === 'string' ? v.isMax : '');
+        }
+    };
+}
+
 function typeSelectors(initial) {
     const first = el('select');
     const second = el('select');
@@ -539,6 +582,7 @@ function renderMovesTab(container) {
         const pp = el('input', { type: 'number', min: '1', max: '99', value: String(data.pp || 10) });
         const priority = el('input', { type: 'number', min: '-7', max: '7', value: String(data.priority || 0) });
         const effects = moveEffectsEditor(data);
+        const kindEditor = moveKindEditor(data);
 
         editorHost.appendChild(el('div', { class: 'cm-row' }, [
             el('span', { class: 'cm-tag', text: CreativeMode.hasMoveOverride(selectedId) ? '已有覆蓋' : (CreativeMode.isCustomMove(selectedId) ? '自訂' : '原始') }),
@@ -553,6 +597,7 @@ function renderMovesTab(container) {
             el('label', { class: 'cm-field', text: '優先度' }, [priority])
         ]));
         editorHost.appendChild(effects.node);
+        editorHost.appendChild(kindEditor.node);
         editorHost.appendChild(el('div', { class: 'cm-row' }, [
             el('button', {
                 class: 'cm-btn primary',
@@ -565,7 +610,7 @@ function renderMovesTab(container) {
                         accuracy: Number(accuracy.value) || 0,
                         pp: Number(pp.value) || 1,
                         priority: Number(priority.value) || 0
-                    }, effects.build(category.value)));
+                    }, effects.build(category.value), kindEditor.build()));
                     toast('已儲存招式覆蓋：' + selectedId);
                 }
             }),
@@ -593,6 +638,7 @@ function renderMovesTab(container) {
     const addAcc = el('input', { type: 'number', value: '100' });
     const addPp = el('input', { type: 'number', value: '15' });
     const addEffects = moveEffectsEditor(null);
+    const addKind = moveKindEditor(null);
     let editingMoveId = null;
     addForm.appendChild(el('div', { class: 'cm-row' }, [
         el('label', { class: 'cm-field', text: 'ID' }, [addId]),
@@ -606,6 +652,7 @@ function renderMovesTab(container) {
         el('label', { class: 'cm-field', text: 'PP' }, [addPp])
     ]));
     addForm.appendChild(addEffects.node);
+    addForm.appendChild(addKind.node);
     const submitMoveBtn = el('button', {
         class: 'cm-btn primary',
         text: '新增招式',
@@ -620,7 +667,7 @@ function renderMovesTab(container) {
                 basePower: Number(addPower.value) || 0,
                 accuracy: Number(addAcc.value) || 100,
                 pp: Number(addPp.value) || 10
-            }, addEffects.build(addCat.value)));
+            }, addEffects.build(addCat.value), addKind.build()));
             if (ok) {
                 if (editingMoveId && editingMoveId !== targetId) CreativeMode.removeCustomMove(editingMoveId);
                 toast((editingMoveId ? '已更新招式：' : '已新增招式：') + addName.value);
@@ -643,6 +690,7 @@ function renderMovesTab(container) {
         addAcc.value = '100';
         addPp.value = '15';
         addEffects.set({});
+        addKind.set({});
         submitMoveBtn.textContent = '新增招式';
         cancelMoveBtn.style.display = 'none';
     }
@@ -657,6 +705,7 @@ function renderMovesTab(container) {
         addAcc.value = String(entry.accuracy === true ? 100 : (entry.accuracy || 100));
         addPp.value = String(entry.pp || 10);
         addEffects.set(entry);
+        addKind.set(entry);
         submitMoveBtn.textContent = '更新招式';
         cancelMoveBtn.style.display = '';
         try { addForm.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}

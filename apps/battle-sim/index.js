@@ -1298,11 +1298,12 @@ async function handleAttack(moveIndex, options = {}) {
                 : null;
 
             if (zTarget) {
-                const zMoveId = zTarget.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                const zMoveId = (zTarget.id || zTarget.name).toLowerCase().replace(/[^a-z0-9]/g, '');
                 const zMoveData = (typeof MOVES !== 'undefined' && MOVES[zMoveId]) ? MOVES[zMoveId] : {};
                 
                 // 使用自动推导的 Z 招式数据
                 playerMove = {
+                    id: zMoveId,
                     name: zTarget.name,
                     cn: zMoveData.cn || zTarget.name,
                     type: zTarget.type || baseMoveForZ.type || playerMove.type || 'Normal',
