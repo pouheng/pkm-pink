@@ -1092,7 +1092,7 @@
           display: flex;
           align-items: center;
           gap: 6px;
-          padding: 8px 12px;
+          padding: 8px 8px 8px 12px;
           border-radius: 12px;
           border: 1px solid rgba(255, 209, 102, 0.55);
           background: rgba(20, 26, 40, 0.86);
@@ -1105,11 +1105,44 @@
         }
         #${CREATIVE_FAB_ID}:hover {
           background: rgba(30, 40, 60, 0.96);
-          transform: translateY(-2px);
         }
-        #${CREATIVE_FAB_ID} svg {
+        #${CREATIVE_FAB_ID} > svg {
           width: 16px;
           height: 16px;
+        }
+        #${CREATIVE_FAB_ID} .pkm-creative-fab-fold {
+          appearance: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 20px;
+          height: 20px;
+          padding: 0;
+          border: 1px solid rgba(255, 255, 255, 0.28);
+          border-radius: 8px;
+          background: rgba(18, 26, 34, 0.7);
+          color: rgba(255, 255, 255, 0.85);
+          cursor: pointer;
+          transition: background 0.2s ease, transform 0.2s ease;
+        }
+        #${CREATIVE_FAB_ID} .pkm-creative-fab-fold:hover {
+          background: rgba(40, 52, 66, 0.95);
+        }
+        #${CREATIVE_FAB_ID} .pkm-creative-fab-fold svg {
+          width: 12px;
+          height: 12px;
+        }
+        #${CREATIVE_FAB_ID}.pkm-creative-fab-collapsed {
+          right: 0;
+          padding: 8px;
+          border-radius: 12px 0 0 12px;
+          opacity: 0.82;
+        }
+        #${CREATIVE_FAB_ID}.pkm-creative-fab-collapsed .pkm-creative-fab-label {
+          display: none;
+        }
+        #${CREATIVE_FAB_ID}.pkm-creative-fab-collapsed .pkm-creative-fab-fold {
+          transform: rotate(180deg);
         }
         #${BALL_ID}.${BALL_COLLAPSED_CLASS} {
           right: 0;
@@ -1298,14 +1331,32 @@
       wrapper.append(iframe, creativeBtn, closeBtn);
       overlay.append(wrapper);
 
-      const creativeFab = $('<button>')
+      const CREATIVE_FAB_COLLAPSED_KEY = 'pkm.mvuz.creativeFabCollapsed';
+      const creativeFab = $('<div>')
         .attr('id', CREATIVE_FAB_ID)
-        .attr('type', 'button')
-        .attr('title', '創造模式（另開視窗）')
+        .attr('role', 'button')
+        .attr('tabindex', '0')
+        .attr('title', '創造模式')
         .attr('aria-label', '創造模式')
-        .html('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg><span>創造模式</span>');
+        .html('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg><span class="pkm-creative-fab-label">創造模式</span><button class="pkm-creative-fab-fold" type="button" title="收起到側邊" aria-label="收起到側邊"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>');
       creativeFab.on('click', () => {
         openOverlay(() => postToIframe({ type: 'pkm-open-creative', product: PRODUCT }));
+      });
+      const fabFoldBtn = creativeFab.find('.pkm-creative-fab-fold');
+      const setFabCollapsed = (collapsed) => {
+        creativeFab.toggleClass('pkm-creative-fab-collapsed', collapsed);
+        fabFoldBtn
+          .attr('title', collapsed ? '展開' : '收起到側邊')
+          .attr('aria-label', collapsed ? '展開' : '收起到側邊');
+        try { ROOT.localStorage?.setItem(CREATIVE_FAB_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (_) {}
+      };
+      let fabCollapsed = false;
+      try { fabCollapsed = ROOT.localStorage?.getItem(CREATIVE_FAB_COLLAPSED_KEY) === '1'; } catch (_) {}
+      setFabCollapsed(fabCollapsed);
+      fabFoldBtn.on('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setFabCollapsed(!creativeFab.hasClass('pkm-creative-fab-collapsed'));
       });
 
       $('body').append(ball, overlay, creativeFab);
