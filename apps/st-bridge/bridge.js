@@ -319,7 +319,22 @@
       isLocalBridgeUrl(bridgeUrl) ? 'local' : 'prod'
     );
     const fallbackAppBaseUrl = env === 'local' ? LOCAL_APP_BASE_URL : PROD_APP_BASE_URL;
-    const appBaseUrl = trimTrailingSlash(params.get('appBase') || ROOT.PKM_APP_BASE_URL || fallbackAppBaseUrl) || fallbackAppBaseUrl;
+    let appBaseUrl = trimTrailingSlash(params.get('appBase') || ROOT.PKM_APP_BASE_URL || fallbackAppBaseUrl) || fallbackAppBaseUrl;
+
+    // 【Fork 安全】若 appBaseUrl 仍指向上游預設，但 bridge 本身是從別處（例如 fork）載入，
+    // 就自動改用 bridge 自身來源，避免沿用上游舊版 app。
+    try {
+      const selfBase = String(bridgeUrl || '').replace(/\/apps\/st-bridge\/bridge\.js.*$/i, '');
+      if (selfBase && /^https?:\/\//i.test(selfBase)) {
+        const target = new URL(appBaseUrl);
+        const self = new URL(selfBase);
+        if (target.origin !== self.origin && /(^|\.)hasheeper\.github\.io$/i.test(target.hostname)) {
+          console.warn('[ST Bridge] appBaseUrl points to upstream; using bridge origin instead:', selfBase);
+          appBaseUrl = selfBase;
+        }
+      }
+    } catch (_) {}
+
     return {
       env,
       appBaseUrl,
