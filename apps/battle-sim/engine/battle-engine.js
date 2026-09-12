@@ -449,7 +449,14 @@ export class Pokemon {
         const level = config.lv || config.level || 50;
         const moveNames = config.moves || [];
         
-        const data = getPokemonData(name);
+        // === 創造模式：暱稱導向的種族值 / 屬性 / 特性覆蓋 ===
+        // 只有創造模式開啟且該暱稱有對應規則時才生效，否則完全不影響原流程。
+        const nicknameOverride = (typeof window !== 'undefined' && window.CreativeMode)
+            ? window.CreativeMode.resolveNickname(config.nickname)
+            : null;
+        
+        const lookupName = (nicknameOverride && nicknameOverride.species) ? nicknameOverride.species : name;
+        const data = getPokemonData(lookupName);
         if (!data) {
             console.warn(`Pokemon "${name}" not found in POKEDEX, using Pikachu`);
             const fallback = getPokemonData('Pikachu') || {
@@ -458,7 +465,28 @@ export class Pokemon {
             };
             this._initCore('Pikachu', fallback.types, fallback.baseStats, level, moveNames, config);
         } else {
-            this._initCore(name, data.types, data.baseStats, level, moveNames, config);
+            let types = data.types;
+            let baseStats = data.baseStats;
+            let effectiveName = name;
+            let effectiveConfig = config;
+            
+            if (nicknameOverride) {
+                if (Array.isArray(nicknameOverride.types) && nicknameOverride.types.length) {
+                    types = nicknameOverride.types;
+                }
+                if (nicknameOverride.baseStats) {
+                    baseStats = Object.assign({}, baseStats, nicknameOverride.baseStats);
+                }
+                if (nicknameOverride.ability) {
+                    effectiveConfig = Object.assign({}, config, { ability: nicknameOverride.ability });
+                }
+                if (nicknameOverride.species) {
+                    effectiveName = data.name;
+                }
+                console.log(`[CREATIVE] 暱稱覆蓋套用: "${config.nickname}" -> ${effectiveName}`);
+            }
+            
+            this._initCore(effectiveName, types, baseStats, level, moveNames, effectiveConfig);
         }
     }
     
@@ -480,6 +508,7 @@ export class Pokemon {
      */
     _initCore(name, types, baseStats, level, moveNames, config = {}) {
         this.name = name;
+        this.nickname = config.nickname || null;
         this.isMega = false;
         this.isTransformed = false;
         this.isUnofficialMega = false;

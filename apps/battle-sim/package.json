@@ -14,7 +14,8 @@
     "battle:test": "node scripts/battle-test.js",
     "flow:test": "node scripts/battle-flow-test.js",
     "move:coverage": "node scripts/move-coverage-test.js",
-    "test": "npm run typecheck && npm run battle:test && npm run flow:test && npm run move:coverage"
+    "creative:test": "node scripts/creative-mode-test.js",
+    "test": "npm run typecheck && npm run battle:test && npm run flow:test && npm run move:coverage && npm run creative:test"
   },
   "type": "module",
   "repository": {

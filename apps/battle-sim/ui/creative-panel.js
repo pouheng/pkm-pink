@@ -1,0 +1,794 @@
+// @ts-check
+/**
+ * =============================================
+ * CREATIVE PANEL - 創造模式控制台 UI
+ * =============================================
+ *
+ * 純 DOM 實作（與本專案既有 UI 風格一致）。
+ * 提供四個分頁：
+ *  1. 種族值：覆蓋既有寶可夢的種族值 / 屬性 / 特性，或新增寶可夢
+ *  2. 招式：覆蓋既有招式參數，或新增招式
+ *  3. 暱稱：設定暱稱導向的種族值 / 特性覆蓋
+ *  4. 資料：總開關、匯出 / 匯入 JSON、重置
+ */
+
+import CreativeMode, {
+    STAT_KEYS,
+    STAT_LABELS,
+    POKEMON_TYPES,
+    MOVE_CATEGORIES
+} from '../systems/creative-mode.js';
+
+const STYLE_ID = 'creative-panel-style';
+let panelEl = null;
+let launcherEl = null;
+let activeTab = 'species';
+
+// ============================================
+// 小工具
+// ============================================
+
+function el(tag, attrs = {}, children = []) {
+    const node = document.createElement(tag);
+    for (const key of Object.keys(attrs)) {
+        const value = attrs[key];
+        if (key === 'class') node.className = value;
+        else if (key === 'text') node.textContent = value;
+        else if (key === 'html') node.innerHTML = value;
+        else if (key.startsWith('on') && typeof value === 'function') node.addEventListener(key.slice(2), value);
+        else if (value !== undefined && value !== null) node.setAttribute(key, value);
+    }
+    const list = Array.isArray(children) ? children : [children];
+    for (const child of list) {
+        if (child === null || child === undefined) continue;
+        node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+    }
+    return node;
+}
+
+function injectStyles() {
+    if (document.getElementById(STYLE_ID)) return;
+    const style = el('style', { id: STYLE_ID });
+    style.textContent = `
+    .cm-launcher{position:fixed;left:14px;bottom:14px;z-index:99998;background:#1b1e2b;color:#ffd166;
+        border:1px solid #ffd166;border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer;
+        font-family:inherit;letter-spacing:1px;box-shadow:0 4px 18px rgba(0,0,0,.45)}
+    .cm-launcher.active{background:#ffd166;color:#1b1e2b}
+    .cm-overlay{position:fixed;inset:0;z-index:99999;background:rgba(6,8,16,.72);display:flex;
+        align-items:center;justify-content:center;font-family:'Rubik','M+PLUS Rounded 1c',sans-serif}
+    .cm-window{width:min(920px,94vw);height:min(720px,92vh);background:#141827;color:#e8ecf5;
+        border:1px solid #2c3450;border-radius:14px;display:flex;flex-direction:column;overflow:hidden;
+        box-shadow:0 20px 60px rgba(0,0,0,.6)}
+    .cm-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;
+        background:#1b2136;border-bottom:1px solid #2c3450}
+    .cm-title{font-weight:800;letter-spacing:2px;color:#ffd166}
+    .cm-status{font-size:12px;padding:3px 10px;border-radius:20px;background:#3a2a2a;color:#ff9c9c}
+    .cm-status.on{background:#1f3a2c;color:#8ef0b8}
+    .cm-close{background:transparent;border:1px solid #3a4466;color:#e8ecf5;border-radius:8px;
+        padding:6px 12px;cursor:pointer;font-family:inherit}
+    .cm-tabs{display:flex;gap:4px;padding:10px 14px 0;background:#161b2c}
+    .cm-tab{background:transparent;border:none;border-bottom:3px solid transparent;color:#9aa6c4;
+        padding:10px 16px;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px}
+    .cm-tab.active{color:#ffd166;border-bottom-color:#ffd166}
+    .cm-body{flex:1;overflow:auto;padding:18px}
+    .cm-section{background:#1a2033;border:1px solid #262e47;border-radius:10px;padding:16px;margin-bottom:16px}
+    .cm-section h3{margin:0 0 12px;font-size:15px;color:#ffd166;letter-spacing:1px}
+    .cm-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:12px}
+    .cm-field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#9aa6c4}
+    .cm-field input,.cm-field select,.cm-field textarea{background:#0f1424;border:1px solid #303a5a;
+        color:#e8ecf5;border-radius:8px;padding:7px 9px;font-family:inherit;font-size:13px;min-width:120px}
+    .cm-field input[type=range]{min-width:150px;padding:0}
+    .cm-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px 18px}
+    .cm-stat{display:grid;grid-template-columns:56px 1fr 64px;gap:8px;align-items:center}
+    .cm-stat label{font-size:12px;color:#9aa6c4}
+    .cm-stat input[type=number]{min-width:0;width:64px}
+    .cm-bst{font-weight:700;color:#8ef0b8;margin-left:8px}
+    .cm-btn{background:#2a3350;border:1px solid #3a4670;color:#e8ecf5;border-radius:8px;
+        padding:8px 14px;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px}
+    .cm-btn.primary{background:#ffd166;border-color:#ffd166;color:#1b1e2b}
+    .cm-btn.danger{background:#3a2230;border-color:#7a3550;color:#ff9cbc}
+    .cm-btn:hover{filter:brightness(1.12)}
+    .cm-list{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+    .cm-list-item{display:flex;justify-content:space-between;align-items:center;gap:10px;
+        background:#0f1424;border:1px solid #262e47;border-radius:8px;padding:8px 12px;font-size:13px}
+    .cm-hint{font-size:12px;color:#7f8aa8;line-height:1.5}
+    .cm-picker{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
+    .cm-picker select{min-width:260px;max-width:100%}
+    .cm-tag{font-size:11px;color:#ffd166;border:1px solid #55492a;border-radius:6px;padding:1px 6px}
+    .cm-toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);z-index:100000;
+        background:#1f3a2c;color:#8ef0b8;border:1px solid #2f6b4b;border-radius:8px;
+        padding:10px 18px;font-size:13px;opacity:0;transition:opacity .2s}
+    .cm-toast.show{opacity:1}
+    .cm-toast.error{background:#3a1f26;color:#ff9c9c;border-color:#6b2f3b}
+    `;
+    document.head.appendChild(style);
+}
+
+let toastTimer = null;
+function toast(message, isError) {
+    let node = document.querySelector('.cm-toast');
+    if (!node) {
+        node = el('div', { class: 'cm-toast' });
+        document.body.appendChild(node);
+    }
+    node.textContent = message;
+    node.className = 'cm-toast show' + (isError ? ' error' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { node.className = 'cm-toast'; }, 2600);
+}
+
+function speciesItems() {
+    return CreativeMode.listSpeciesIds().map((id) => {
+        const data = CreativeMode.getSpecies(id);
+        return { id, name: data ? data.name : id };
+    });
+}
+
+function moveItems() {
+    return CreativeMode.listMoveIds().map((id) => {
+        const data = CreativeMode.getMove(id);
+        return { id, name: data ? data.name : id };
+    });
+}
+
+/**
+ * 建立搜尋 + 下拉選單
+ */
+function buildPicker(items, onPick, placeholder) {
+    const filter = el('input', { type: 'text', placeholder: placeholder || '搜尋…' });
+    const select = el('select');
+    const wrap = el('div', { class: 'cm-picker' }, [
+        el('label', { class: 'cm-field', text: '搜尋' }, [filter]),
+        el('label', { class: 'cm-field', text: '選擇' }, [select])
+    ]);
+
+    function rebuild() {
+        const q = filter.value.trim().toLowerCase();
+        const filtered = q
+            ? items.filter((it) => it.id.includes(q) || String(it.name).toLowerCase().includes(q))
+            : items;
+        select.innerHTML = '';
+        const limited = filtered.slice(0, 300);
+        for (const it of limited) {
+            select.appendChild(el('option', { value: it.id, text: `${it.id} — ${it.name}` }));
+        }
+        if (filtered.length > limited.length) {
+            select.appendChild(el('option', { value: '', text: `…另有 ${filtered.length - limited.length} 項，請縮小搜尋` }));
+        }
+    }
+
+    filter.addEventListener('input', rebuild);
+    select.addEventListener('change', () => {
+        if (select.value) onPick(select.value);
+    });
+    rebuild();
+    return wrap;
+}
+
+function statsEditor(initial) {
+    const inputs = {};
+    const grid = el('div', { class: 'cm-stats' });
+    const bst = el('span', { class: 'cm-bst', text: 'BST 0' });
+
+    function updateBST() {
+        const stats = {};
+        for (const key of STAT_KEYS) stats[key] = Number(inputs[key].value) || 0;
+        bst.textContent = 'BST ' + CreativeMode.calcBST(stats);
+    }
+
+    for (const key of STAT_KEYS) {
+        const number = el('input', { type: 'number', min: '1', max: '255', value: String(initial[key] || 0) });
+        const range = el('input', { type: 'range', min: '1', max: '255', value: String(initial[key] || 0) });
+        range.addEventListener('input', () => { number.value = range.value; updateBST(); });
+        number.addEventListener('input', () => { range.value = number.value; updateBST(); });
+        inputs[key] = number;
+        grid.appendChild(el('div', { class: 'cm-stat' }, [
+            el('label', { text: STAT_LABELS[key] }),
+            range,
+            number
+        ]));
+    }
+    updateBST();
+
+    return {
+        node: grid,
+        bstNode: bst,
+        get() {
+            const stats = {};
+            for (const key of STAT_KEYS) stats[key] = Number(inputs[key].value) || 0;
+            return stats;
+        }
+    };
+}
+
+function typeSelectors(initial) {
+    const first = el('select');
+    const second = el('select');
+    for (const sel of [first, second]) {
+        sel.appendChild(el('option', { value: '', text: '（無）' }));
+        for (const t of POKEMON_TYPES) sel.appendChild(el('option', { value: t, text: t }));
+    }
+    first.value = (initial && initial[0]) || 'Normal';
+    second.value = (initial && initial[1]) || '';
+    return {
+        node: el('div', { class: 'cm-row' }, [
+            el('label', { class: 'cm-field', text: '屬性 1' }, [first]),
+            el('label', { class: 'cm-field', text: '屬性 2' }, [second])
+        ]),
+        get() {
+            const list = [first.value];
+            if (second.value) list.push(second.value);
+            return list.filter(Boolean);
+        }
+    };
+}
+
+// ============================================
+// 分頁：種族值
+// ============================================
+
+function renderSpeciesTab(container) {
+    let selectedId = null;
+    let stats = null;
+    let types = null;
+
+    const form = el('div', { class: 'cm-section' });
+    const editorHost = el('div');
+    form.appendChild(el('h3', { text: '種族值 / 屬性 / 特性編輯' }));
+    form.appendChild(buildPicker(speciesItems(), (id) => { selectedId = id; renderEditor(); }, '輸入 ID 或名稱…'));
+    form.appendChild(editorHost);
+
+    function renderEditor() {
+        editorHost.innerHTML = '';
+        if (!selectedId) {
+            editorHost.appendChild(el('p', { class: 'cm-hint', text: '請先選擇一隻寶可夢。' }));
+            return;
+        }
+        const data = CreativeMode.getSpecies(selectedId);
+        if (!data) {
+            editorHost.appendChild(el('p', { class: 'cm-hint', text: '找不到資料。' }));
+            return;
+        }
+        stats = statsEditor(data.baseStats || {});
+        types = typeSelectors(data.types || ['Normal']);
+
+        const nameInput = el('input', { type: 'text', value: data.name || selectedId });
+        const ability0 = el('input', { type: 'text', value: (data.abilities && data.abilities['0']) || '' });
+        const ability1 = el('input', { type: 'text', value: (data.abilities && data.abilities['1']) || '' });
+        const abilityH = el('input', { type: 'text', value: (data.abilities && data.abilities['H']) || '' });
+
+        editorHost.appendChild(el('div', { class: 'cm-row' }, [
+            el('label', { class: 'cm-field', text: '顯示名稱' }, [nameInput]),
+            el('span', { class: 'cm-tag', text: CreativeMode.hasSpeciesOverride(selectedId) ? '已有覆蓋' : (CreativeMode.isCustomSpecies(selectedId) ? '自訂' : '原始') })
+        ]));
+        editorHost.appendChild(types.node);
+        editorHost.appendChild(el('div', { class: 'cm-row' }, [
+            el('span', { class: 'cm-field', text: '種族值' }, []),
+            stats.bstNode
+        ]));
+        editorHost.appendChild(stats.node);
+        editorHost.appendChild(el('div', { class: 'cm-row' }, [
+            el('label', { class: 'cm-field', text: '特性 0' }, [ability0]),
+            el('label', { class: 'cm-field', text: '特性 1' }, [ability1]),
+            el('label', { class: 'cm-field', text: '隱藏特性' }, [abilityH])
+        ]));
+        editorHost.appendChild(el('div', { class: 'cm-row' }, [
+            el('button', {
+                class: 'cm-btn primary',
+                text: '儲存覆蓋',
+                onclick: () => {
+                    const abilities = {};
+                    if (ability0.value) abilities['0'] = ability0.value;
+                    if (ability1.value) abilities['1'] = ability1.value;
+                    if (abilityH.value) abilities['H'] = abilityH.value;
+                    CreativeMode.setSpeciesOverride(selectedId, {
+                        name: nameInput.value || undefined,
+                        types: types.get(),
+                        baseStats: stats.get(),
+                        abilities
+                    });
+                    toast('已儲存種族值覆蓋：' + selectedId);
+                }
+            }),
+            el('button', {
+                class: 'cm-btn danger',
+                text: '還原此項',
+                onclick: () => {
+                    CreativeMode.clearSpeciesOverride(selectedId);
+                    toast('已還原：' + selectedId);
+                    renderEditor();
+                }
+            })
+        ]));
+    }
+
+    const addForm = el('div', { class: 'cm-section' });
+    addForm.appendChild(el('h3', { text: '新增寶可夢' }));
+    const addId = el('input', { type: 'text', placeholder: 'pikachu-custom' });
+    const addName = el('input', { type: 'text', placeholder: '自訂皮卡丘' });
+    const addStats = statsEditor({ hp: 50, atk: 50, def: 50, spa: 50, spd: 50, spe: 50 });
+    const addTypes = typeSelectors(['Normal']);
+    const addAbility = el('input', { type: 'text', placeholder: 'Overgrow' });
+    addForm.appendChild(el('div', { class: 'cm-row' }, [
+        el('label', { class: 'cm-field', text: 'ID' }, [addId]),
+        el('label', { class: 'cm-field', text: '名稱' }, [addName]),
+        el('label', { class: 'cm-field', text: '特性 0' }, [addAbility])
+    ]));
+    addForm.appendChild(addTypes.node);
+    addForm.appendChild(addStats.node);
+    addForm.appendChild(el('div', { class: 'cm-row' }, [
+        el('button', {
+            class: 'cm-btn primary',
+            text: '新增寶可夢',
+            onclick: () => {
+                if (!addName.value) { toast('請輸入名稱', true); return; }
+                const ok = CreativeMode.addCustomSpecies({
+                    id: addId.value || addName.value,
+                    name: addName.value,
+                    types: addTypes.get(),
+                    baseStats: addStats.get(),
+                    abilities: addAbility.value ? { 0: addAbility.value } : { 0: 'Overgrow' }
+                });
+                if (ok) {
+                    toast('已新增寶可夢：' + addName.value);
+                    addId.value = '';
+                    addName.value = '';
+                } else {
+                    toast('新增失敗', true);
+                }
+            }
+        })
+    ]));
+
+    const customList = el('div', { class: 'cm-list' });
+    function renderCustomList() {
+        customList.innerHTML = '';
+        const ids = Object.keys(CreativeMode._getState().customSpecies);
+        if (!ids.length) {
+            customList.appendChild(el('p', { class: 'cm-hint', text: '目前沒有自訂寶可夢。' }));
+            return;
+        }
+        for (const id of ids) {
+            const entry = CreativeMode._getState().customSpecies[id];
+            customList.appendChild(el('div', { class: 'cm-list-item' }, [
+                el('span', { text: `${entry.name} (${id}) · BST ${CreativeMode.calcBST(entry.baseStats)}` }),
+                el('button', {
+                    class: 'cm-btn danger',
+                    text: '刪除',
+                    onclick: () => { CreativeMode.removeCustomSpecies(id); renderCustomList(); toast('已刪除：' + id); }
+                })
+            ]));
+        }
+    }
+    renderCustomList();
+    addForm.appendChild(customList);
+
+    container.appendChild(form);
+    container.appendChild(addForm);
+    renderEditor();
+}
+
+// ============================================
+// 分頁：招式
+// ============================================
+
+function renderMovesTab(container) {
+    let selectedId = null;
+
+    const form = el('div', { class: 'cm-section' });
+    const editorHost = el('div');
+    form.appendChild(el('h3', { text: '招式編輯' }));
+    form.appendChild(buildPicker(moveItems(), (id) => { selectedId = id; renderEditor(); }, '輸入 ID 或名稱…'));
+    form.appendChild(editorHost);
+
+    function renderEditor() {
+        editorHost.innerHTML = '';
+        if (!selectedId) {
+            editorHost.appendChild(el('p', { class: 'cm-hint', text: '請先選擇一個招式。' }));
+            return;
+        }
+        const data = CreativeMode.getMove(selectedId);
+        if (!data) {
+            editorHost.appendChild(el('p', { class: 'cm-hint', text: '找不到資料。' }));
+            return;
+        }
+        const type = el('select');
+        for (const t of POKEMON_TYPES) type.appendChild(el('option', { value: t, text: t }));
+        type.value = data.type || 'Normal';
+        const category = el('select');
+        for (const c of MOVE_CATEGORIES) category.appendChild(el('option', { value: c, text: c }));
+        category.value = data.category || 'Physical';
+        const power = el('input', { type: 'number', min: '0', max: '500', value: String(data.basePower || 0) });
+        const accuracy = el('input', { type: 'number', min: '0', max: '100', value: String(data.accuracy === true ? 100 : (data.accuracy || 100)) });
+        const pp = el('input', { type: 'number', min: '1', max: '99', value: String(data.pp || 10) });
+        const priority = el('input', { type: 'number', min: '-7', max: '7', value: String(data.priority || 0) });
+
+        editorHost.appendChild(el('div', { class: 'cm-row' }, [
+            el('span', { class: 'cm-tag', text: CreativeMode.hasMoveOverride(selectedId) ? '已有覆蓋' : (CreativeMode.isCustomMove(selectedId) ? '自訂' : '原始') }),
+            el('span', { class: 'cm-hint', text: '名稱：' + (data.name || selectedId) })
+        ]));
+        editorHost.appendChild(el('div', { class: 'cm-row' }, [
+            el('label', { class: 'cm-field', text: '屬性' }, [type]),
+            el('label', { class: 'cm-field', text: '分類' }, [category]),
+            el('label', { class: 'cm-field', text: '威力' }, [power]),
+            el('label', { class: 'cm-field', text: '命中' }, [accuracy]),
+            el('label', { class: 'cm-field', text: 'PP' }, [pp]),
+            el('label', { class: 'cm-field', text: '優先度' }, [priority])
+        ]));
+        editorHost.appendChild(el('div', { class: 'cm-row' }, [
+            el('button', {
+                class: 'cm-btn primary',
+                text: '儲存覆蓋',
+                onclick: () => {
+                    CreativeMode.setMoveOverride(selectedId, {
+                        type: type.value,
+                        category: category.value,
+                        basePower: Number(power.value) || 0,
+                        accuracy: Number(accuracy.value) || 0,
+                        pp: Number(pp.value) || 1,
+                        priority: Number(priority.value) || 0
+                    });
+                    toast('已儲存招式覆蓋：' + selectedId);
+                }
+            }),
+            el('button', {
+                class: 'cm-btn danger',
+                text: '還原此項',
+                onclick: () => {
+                    CreativeMode.clearMoveOverride(selectedId);
+                    toast('已還原：' + selectedId);
+                    renderEditor();
+                }
+            })
+        ]));
+    }
+
+    const addForm = el('div', { class: 'cm-section' });
+    addForm.appendChild(el('h3', { text: '新增招式' }));
+    const addId = el('input', { type: 'text', placeholder: 'thunder-custom' });
+    const addName = el('input', { type: 'text', placeholder: '自訂十萬伏特' });
+    const addType = el('select');
+    for (const t of POKEMON_TYPES) addType.appendChild(el('option', { value: t, text: t }));
+    const addCat = el('select');
+    for (const c of MOVE_CATEGORIES) addCat.appendChild(el('option', { value: c, text: c }));
+    const addPower = el('input', { type: 'number', value: '90' });
+    const addAcc = el('input', { type: 'number', value: '100' });
+    const addPp = el('input', { type: 'number', value: '15' });
+    addForm.appendChild(el('div', { class: 'cm-row' }, [
+        el('label', { class: 'cm-field', text: 'ID' }, [addId]),
+        el('label', { class: 'cm-field', text: '名稱' }, [addName]),
+        el('label', { class: 'cm-field', text: '屬性' }, [addType]),
+        el('label', { class: 'cm-field', text: '分類' }, [addCat])
+    ]));
+    addForm.appendChild(el('div', { class: 'cm-row' }, [
+        el('label', { class: 'cm-field', text: '威力' }, [addPower]),
+        el('label', { class: 'cm-field', text: '命中' }, [addAcc]),
+        el('label', { class: 'cm-field', text: 'PP' }, [addPp])
+    ]));
+    addForm.appendChild(el('div', { class: 'cm-row' }, [
+        el('button', {
+            class: 'cm-btn primary',
+            text: '新增招式',
+            onclick: () => {
+                if (!addName.value) { toast('請輸入名稱', true); return; }
+                const ok = CreativeMode.addCustomMove({
+                    id: addId.value || addName.value,
+                    name: addName.value,
+                    type: addType.value,
+                    category: addCat.value,
+                    basePower: Number(addPower.value) || 0,
+                    accuracy: Number(addAcc.value) || 100,
+                    pp: Number(addPp.value) || 10
+                });
+                if (ok) { toast('已新增招式：' + addName.value); addId.value = ''; addName.value = ''; }
+                else toast('新增失敗', true);
+            }
+        })
+    ]));
+
+    const customList = el('div', { class: 'cm-list' });
+    function renderCustomList() {
+        customList.innerHTML = '';
+        const ids = Object.keys(CreativeMode._getState().customMoves);
+        if (!ids.length) {
+            customList.appendChild(el('p', { class: 'cm-hint', text: '目前沒有自訂招式。' }));
+            return;
+        }
+        for (const id of ids) {
+            const entry = CreativeMode._getState().customMoves[id];
+            customList.appendChild(el('div', { class: 'cm-list-item' }, [
+                el('span', { text: `${entry.name} (${id}) · ${entry.type} · ${entry.category} · 威力 ${entry.basePower}` }),
+                el('button', {
+                    class: 'cm-btn danger',
+                    text: '刪除',
+                    onclick: () => { CreativeMode.removeCustomMove(id); renderCustomList(); toast('已刪除：' + id); }
+                })
+            ]));
+        }
+    }
+    renderCustomList();
+    addForm.appendChild(customList);
+
+    container.appendChild(form);
+    container.appendChild(addForm);
+    renderEditor();
+}
+
+// ============================================
+// 分頁：暱稱覆蓋
+// ============================================
+
+function renderNicknameTab(container) {
+    const form = el('div', { class: 'cm-section' });
+    form.appendChild(el('h3', { text: '暱稱導向的種族值 / 特性覆蓋' }));
+    form.appendChild(el('p', {
+        class: 'cm-hint',
+        text: '當寶可夢的 nickname 等於設定值時，戰鬥時自動改用另一套種族值與特性。可用於還原特殊型態（例如：小智版甲賀忍蛙）。'
+    }));
+
+    const nickname = el('input', { type: 'text', placeholder: '小智版甲賀忍蛙' });
+    const targetHost = el('div');
+    let targetSpecies = '';
+    targetHost.appendChild(buildPicker(speciesItems(), (id) => { targetSpecies = id; }, '可選：替換成其他物種…'));
+    const ability = el('input', { type: 'text', placeholder: '牽絆變身' });
+    const note = el('input', { type: 'text', placeholder: '原作動畫形態還原' });
+    const stats = statsEditor({ hp: 72, atk: 145, def: 67, spa: 153, spd: 71, spe: 132 });
+
+    form.appendChild(el('div', { class: 'cm-row' }, [
+        el('label', { class: 'cm-field', text: '暱稱' }, [nickname]),
+        el('label', { class: 'cm-field', text: '替換特性（可選）' }, [ability]),
+        el('label', { class: 'cm-field', text: '備註（可選）' }, [note])
+    ]));
+    form.appendChild(el('div', { class: 'cm-row' }, [
+        el('span', { class: 'cm-field', text: '替換物種（可選，留空則沿用原物種）' }, []),
+        targetHost
+    ]));
+    form.appendChild(stats.node);
+    form.appendChild(el('div', { class: 'cm-row' }, [
+        el('button', {
+            class: 'cm-btn primary',
+            text: '新增 / 更新覆蓋',
+            onclick: () => {
+                if (!nickname.value.trim()) { toast('請輸入暱稱', true); return; }
+                const data = { baseStats: stats.get() };
+                if (targetSpecies) data.species = targetSpecies;
+                if (ability.value) data.ability = ability.value;
+                if (note.value) data.note = note.value;
+                CreativeMode.setNicknameOverride(nickname.value.trim(), data);
+                toast('已設定暱稱覆蓋：' + nickname.value.trim());
+                nickname.value = '';
+                renderList();
+            }
+        })
+    ]));
+
+    const list = el('div', { class: 'cm-list' });
+    function renderList() {
+        list.innerHTML = '';
+        const overrides = CreativeMode.getNicknameOverrides();
+        const keys = Object.keys(overrides);
+        if (!keys.length) {
+            list.appendChild(el('p', { class: 'cm-hint', text: '目前沒有暱稱覆蓋規則。' }));
+            return;
+        }
+        for (const key of keys) {
+            const entry = overrides[key];
+            const statsText = entry.baseStats
+                ? `BST ${CreativeMode.calcBST(entry.baseStats)}`
+                : '沿用原種族值';
+            list.appendChild(el('div', { class: 'cm-list-item' }, [
+                el('span', {
+                    text: `「${entry.nickname}」${entry.species ? ' → ' + entry.species : ''} · ${statsText}${entry.ability ? ' · 特性:' + entry.ability : ''}`
+                }),
+                el('button', {
+                    class: 'cm-btn danger',
+                    text: '刪除',
+                    onclick: () => { CreativeMode.removeNicknameOverride(key); renderList(); toast('已刪除：' + entry.nickname); }
+                })
+            ]));
+        }
+    }
+    renderList();
+    form.appendChild(el('h3', { text: '現有規則' }));
+    form.appendChild(list);
+    container.appendChild(form);
+}
+
+// ============================================
+// 分頁：資料 / 匯入匯出
+// ============================================
+
+function renderDataTab(container) {
+    const toggleSection = el('div', { class: 'cm-section' });
+    toggleSection.appendChild(el('h3', { text: '創造模式總開關' }));
+    const toggleBtn = el('button', {
+        class: 'cm-btn ' + (CreativeMode.isEnabled() ? 'danger' : 'primary'),
+        text: CreativeMode.isEnabled() ? '關閉創造模式（還原原始資料）' : '開啟創造模式（套用所有覆蓋）',
+        onclick: () => {
+            CreativeMode.toggle();
+            refreshPanel();
+        }
+    });
+    toggleSection.appendChild(toggleBtn);
+    toggleSection.appendChild(el('p', {
+        class: 'cm-hint',
+        text: '關閉時會完整還原 POKEDEX / MOVES，引擎行為與原專案相同。設定本身會保留，下次開啟時自動重新套用。'
+    }));
+    container.appendChild(toggleSection);
+
+    const exportSection = el('div', { class: 'cm-section' });
+    exportSection.appendChild(el('h3', { text: '匯出' }));
+    const output = el('textarea', { rows: '8', style: 'width:100%;font-family:monospace;font-size:12px' });
+    exportSection.appendChild(el('div', { class: 'cm-row' }, [
+        el('button', {
+            class: 'cm-btn primary',
+            text: '匯出完整擴充包 JSON',
+            onclick: () => {
+                output.value = JSON.stringify(CreativeMode.exportPack(), null, 2);
+                downloadText('pkm-creative-pack.json', output.value);
+                toast('已匯出擴充包');
+            }
+        }),
+        el('button', {
+            class: 'cm-btn',
+            text: '匯出暱稱範例格式',
+            onclick: () => {
+                output.value = JSON.stringify(CreativeMode.exportSpeciesWithNicknames(), null, 2);
+                downloadText('pkm-creative-nicknames.json', output.value);
+                toast('已匯出暱稱格式');
+            }
+        })
+    ]));
+    exportSection.appendChild(output);
+    container.appendChild(exportSection);
+
+    const importSection = el('div', { class: 'cm-section' });
+    importSection.appendChild(el('h3', { text: '匯入' }));
+    const fileInput = el('input', { type: 'file', accept: '.json,application/json' });
+    const importArea = el('textarea', { rows: '8', placeholder: '貼上 JSON 或選擇檔案…', style: 'width:100%;font-family:monospace;font-size:12px' });
+    fileInput.addEventListener('change', () => {
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => { importArea.value = String(reader.result || ''); };
+        reader.readAsText(file);
+    });
+    importSection.appendChild(el('div', { class: 'cm-row' }, [fileInput]));
+    importSection.appendChild(importArea);
+    importSection.appendChild(el('div', { class: 'cm-row' }, [
+        el('button', {
+            class: 'cm-btn primary',
+            text: '匯入並套用',
+            onclick: () => {
+                const result = CreativeMode.importPack(importArea.value);
+                if (!result.ok) { toast('匯入失敗：' + result.error, true); return; }
+                toast('匯入成功（物種 ' + result.summary.customSpecies + ' / 招式 ' + result.summary.customMoves + ' / 暱稱 ' + result.summary.nicknameOverrides + '）');
+                refreshPanel();
+            }
+        }),
+        el('button', {
+            class: 'cm-btn danger',
+            text: '重置全部',
+            onclick: () => {
+                if (!confirm('確定要清除所有創造模式設定並還原原始資料？')) return;
+                CreativeMode.resetAll();
+                toast('已重置');
+                refreshPanel();
+            }
+        })
+    ]));
+    container.appendChild(importSection);
+}
+
+function downloadText(filename, text) {
+    try {
+        const blob = new Blob([text], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+        toast('下載失敗：' + e.message, true);
+    }
+}
+
+// ============================================
+// 面板外殼
+// ============================================
+
+const TABS = [
+    { id: 'species', label: '種族值', render: renderSpeciesTab },
+    { id: 'moves', label: '招式', render: renderMovesTab },
+    { id: 'nickname', label: '暱稱覆蓋', render: renderNicknameTab },
+    { id: 'data', label: '資料', render: renderDataTab }
+];
+
+function refreshPanel() {
+    if (!panelEl) return;
+    const body = panelEl.querySelector('.cm-body');
+    const tabsBar = panelEl.querySelector('.cm-tabs');
+    const status = panelEl.querySelector('.cm-status');
+    if (status) {
+        status.textContent = CreativeMode.isEnabled() ? '創造模式：開啟' : '創造模式：關閉';
+        status.className = 'cm-status' + (CreativeMode.isEnabled() ? ' on' : '');
+    }
+    if (tabsBar) {
+        tabsBar.innerHTML = '';
+        for (const tab of TABS) {
+            tabsBar.appendChild(el('button', {
+                class: 'cm-tab' + (activeTab === tab.id ? ' active' : ''),
+                text: tab.label,
+                onclick: () => { activeTab = tab.id; refreshPanel(); }
+            }));
+        }
+    }
+    if (body) {
+        body.innerHTML = '';
+        const tab = TABS.find((t) => t.id === activeTab) || TABS[0];
+        tab.render(body);
+    }
+    if (launcherEl) launcherEl.className = 'cm-launcher' + (CreativeMode.isEnabled() ? ' active' : '');
+}
+
+function openPanel() {
+    if (panelEl) return;
+    injectStyles();
+    const body = el('div', { class: 'cm-body' });
+    const tabsBar = el('div', { class: 'cm-tabs' });
+    const status = el('span', { class: 'cm-status' });
+    panelEl = el('div', { class: 'cm-overlay' }, [
+        el('div', { class: 'cm-window' }, [
+            el('div', { class: 'cm-header' }, [
+                el('span', { class: 'cm-title', text: 'CREATIVE MODE 創造模式' }),
+                status,
+                el('button', { class: 'cm-close', text: '關閉', onclick: closePanel })
+            ]),
+            tabsBar,
+            body
+        ])
+    ]);
+    panelEl.addEventListener('mousedown', (e) => { if (e.target === panelEl) closePanel(); });
+    document.body.appendChild(panelEl);
+    refreshPanel();
+}
+
+function closePanel() {
+    if (panelEl && panelEl.parentNode) panelEl.parentNode.removeChild(panelEl);
+    panelEl = null;
+}
+
+function createLauncher() {
+    if (launcherEl) return;
+    launcherEl = el('button', {
+        class: 'cm-launcher' + (CreativeMode.isEnabled() ? ' active' : ''),
+        text: '創造模式',
+        title: '開啟創造模式控制台',
+        onclick: openPanel
+    });
+    document.body.appendChild(launcherEl);
+}
+
+function init() {
+    if (typeof document === 'undefined') return;
+    injectStyles();
+    createLauncher();
+    CreativeMode.onChange(() => {
+        if (launcherEl) launcherEl.className = 'cm-launcher' + (CreativeMode.isEnabled() ? ' active' : '');
+        if (panelEl) refreshPanel();
+    });
+}
+
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+}
+
+export { openPanel, closePanel };
+export default { openPanel, closePanel };

@@ -17,6 +17,11 @@
 import './globals.js';
 
 // ============================================
+// 1.5 創造模式（需在 POKEDEX / MOVES 掛載後載入）
+// ============================================
+import '../systems/creative-mode.js';
+
+// ============================================
 // 2. 战斗机制模块
 // ============================================
 import '../mechanics/move-styles.js';
@@ -35,6 +40,7 @@ import '../ui/ui-sprites.js';
 import '../ui/sprite-duplicate-fix.js';
 import '../ui/ui-trainer-hud.js';
 import '../ui/ui-menus.js';
+import '../ui/creative-panel.js';
 
 // ============================================
 // 4. 系统模块

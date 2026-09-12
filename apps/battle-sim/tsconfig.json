@@ -23,7 +23,8 @@
     "engine/battle-engine.js",
     "engine/move-handlers.js",
     "engine/ai-engine.js",
-    "systems/pp-system.js"
+    "systems/pp-system.js",
+    "systems/creative-mode.js"
   ],
   "exclude": [
     "ST",
