@@ -225,6 +225,49 @@ function statsEditor(initial) {
     };
 }
 
+function moveEffectsEditor(initial) {
+    const src = initial || {};
+    const drain = el('input', { type: 'number', min: '0', max: '100', value: String(Array.isArray(src.drain) ? Math.round(src.drain[0] / src.drain[1] * 100) : 0) });
+    const recoil = el('input', { type: 'number', min: '0', max: '100', value: String(Array.isArray(src.recoil) ? Math.round(src.recoil[0] / src.recoil[1] * 100) : 0) });
+    const status = el('select');
+    for (const pair of [['', '無'], ['par', '麻痺'], ['brn', '燒傷'], ['psn', '中毒'], ['tox', '劇毒'], ['slp', '睡眠'], ['frz', '冰凍']]) {
+        status.appendChild(el('option', { value: pair[0], text: pair[1] }));
+    }
+    status.value = src.secondary && src.secondary.status ? src.secondary.status : '';
+    const chance = el('input', { type: 'number', min: '0', max: '100', value: String(src.secondary && src.secondary.chance != null ? src.secondary.chance : 10) });
+    const note = el('input', { type: 'text', placeholder: '例：回復造成傷害的50%', value: src.description || '' });
+
+    const node = el('div', { class: 'cm-row' }, [
+        el('label', { class: 'cm-field', text: '吸血%（回復傷害）' }, [drain]),
+        el('label', { class: 'cm-field', text: '反傷%' }, [recoil]),
+        el('label', { class: 'cm-field', text: '附加狀態' }, [status]),
+        el('label', { class: 'cm-field', text: '狀態機率%' }, [chance]),
+        el('label', { class: 'cm-field', text: '效果說明' }, [note])
+    ]);
+
+    return {
+        node,
+        get() {
+            const out = {};
+            const drainPct = Number(drain.value) || 0;
+            if (drainPct > 0) out.drain = [drainPct, 100];
+            const recoilPct = Number(recoil.value) || 0;
+            if (recoilPct > 0) out.recoil = [recoilPct, 100];
+            if (status.value) out.secondary = { chance: Number(chance.value) || 10, status: status.value };
+            if (note.value.trim()) out.description = note.value.trim();
+            return out;
+        },
+        set(values) {
+            const v = values || {};
+            drain.value = String(Array.isArray(v.drain) ? Math.round(v.drain[0] / v.drain[1] * 100) : 0);
+            recoil.value = String(Array.isArray(v.recoil) ? Math.round(v.recoil[0] / v.recoil[1] * 100) : 0);
+            status.value = v.secondary && v.secondary.status ? v.secondary.status : '';
+            chance.value = String(v.secondary && v.secondary.chance != null ? v.secondary.chance : 10);
+            note.value = v.description || '';
+        }
+    };
+}
+
 function typeSelectors(initial) {
     const first = el('select');
     const second = el('select');
@@ -426,6 +469,7 @@ function renderMovesTab(container) {
         const accuracy = el('input', { type: 'number', min: '0', max: '100', value: String(data.accuracy === true ? 100 : (data.accuracy || 100)) });
         const pp = el('input', { type: 'number', min: '1', max: '99', value: String(data.pp || 10) });
         const priority = el('input', { type: 'number', min: '-7', max: '7', value: String(data.priority || 0) });
+        const effects = moveEffectsEditor(data);
 
         editorHost.appendChild(el('div', { class: 'cm-row' }, [
             el('span', { class: 'cm-tag', text: CreativeMode.hasMoveOverride(selectedId) ? '已有覆蓋' : (CreativeMode.isCustomMove(selectedId) ? '自訂' : '原始') }),
@@ -439,19 +483,20 @@ function renderMovesTab(container) {
             el('label', { class: 'cm-field', text: 'PP' }, [pp]),
             el('label', { class: 'cm-field', text: '優先度' }, [priority])
         ]));
+        editorHost.appendChild(effects.node);
         editorHost.appendChild(el('div', { class: 'cm-row' }, [
             el('button', {
                 class: 'cm-btn primary',
                 text: '儲存覆蓋',
                 onclick: () => {
-                    CreativeMode.setMoveOverride(selectedId, {
+                    CreativeMode.setMoveOverride(selectedId, Object.assign({
                         type: type.value,
                         category: category.value,
                         basePower: Number(power.value) || 0,
                         accuracy: Number(accuracy.value) || 0,
                         pp: Number(pp.value) || 1,
                         priority: Number(priority.value) || 0
-                    });
+                    }, effects.get()));
                     toast('已儲存招式覆蓋：' + selectedId);
                 }
             }),
@@ -478,6 +523,8 @@ function renderMovesTab(container) {
     const addPower = el('input', { type: 'number', value: '90' });
     const addAcc = el('input', { type: 'number', value: '100' });
     const addPp = el('input', { type: 'number', value: '15' });
+    const addEffects = moveEffectsEditor(null);
+    let editingMoveId = null;
     addForm.appendChild(el('div', { class: 'cm-row' }, [
         el('label', { class: 'cm-field', text: 'ID' }, [addId]),
         el('label', { class: 'cm-field', text: '名稱' }, [addName]),
@@ -489,26 +536,62 @@ function renderMovesTab(container) {
         el('label', { class: 'cm-field', text: '命中' }, [addAcc]),
         el('label', { class: 'cm-field', text: 'PP' }, [addPp])
     ]));
-    addForm.appendChild(el('div', { class: 'cm-row' }, [
-        el('button', {
-            class: 'cm-btn primary',
-            text: '新增招式',
-            onclick: () => {
-                if (!addName.value) { toast('請輸入名稱', true); return; }
-                const ok = CreativeMode.addCustomMove({
-                    id: addId.value || addName.value,
-                    name: addName.value,
-                    type: addType.value,
-                    category: addCat.value,
-                    basePower: Number(addPower.value) || 0,
-                    accuracy: Number(addAcc.value) || 100,
-                    pp: Number(addPp.value) || 10
-                });
-                if (ok) { toast('已新增招式：' + addName.value); addId.value = ''; addName.value = ''; }
-                else toast('新增失敗', true);
+    addForm.appendChild(addEffects.node);
+    const submitMoveBtn = el('button', {
+        class: 'cm-btn primary',
+        text: '新增招式',
+        onclick: () => {
+            if (!addName.value) { toast('請輸入名稱', true); return; }
+            const targetId = (editingMoveId || addId.value || addName.value).trim();
+            const ok = CreativeMode.addCustomMove(Object.assign({
+                id: targetId,
+                name: addName.value,
+                type: addType.value,
+                category: addCat.value,
+                basePower: Number(addPower.value) || 0,
+                accuracy: Number(addAcc.value) || 100,
+                pp: Number(addPp.value) || 10
+            }, addEffects.get()));
+            if (ok) {
+                if (editingMoveId && editingMoveId !== targetId) CreativeMode.removeCustomMove(editingMoveId);
+                toast((editingMoveId ? '已更新招式：' : '已新增招式：') + addName.value);
+                resetMoveForm();
+                renderCustomList();
+            } else {
+                toast('新增失敗', true);
             }
-        })
-    ]));
+        }
+    });
+    const cancelMoveBtn = el('button', { class: 'cm-btn', text: '取消編輯', onclick: () => resetMoveForm() });
+    cancelMoveBtn.style.display = 'none';
+    addForm.appendChild(el('div', { class: 'cm-row' }, [submitMoveBtn, cancelMoveBtn]));
+
+    function resetMoveForm() {
+        editingMoveId = null;
+        addId.value = '';
+        addName.value = '';
+        addPower.value = '90';
+        addAcc.value = '100';
+        addPp.value = '15';
+        addEffects.set({});
+        submitMoveBtn.textContent = '新增招式';
+        cancelMoveBtn.style.display = 'none';
+    }
+
+    function loadMoveForEdit(entry, id) {
+        editingMoveId = id;
+        addId.value = id;
+        addName.value = entry.name || '';
+        addType.value = entry.type || 'Normal';
+        addCat.value = entry.category || 'Physical';
+        addPower.value = String(entry.basePower || 0);
+        addAcc.value = String(entry.accuracy === true ? 100 : (entry.accuracy || 100));
+        addPp.value = String(entry.pp || 10);
+        addEffects.set(entry);
+        submitMoveBtn.textContent = '更新招式';
+        cancelMoveBtn.style.display = '';
+        try { addForm.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+    }
 
     const customList = el('div', { class: 'cm-list' });
     function renderCustomList() {
@@ -520,13 +603,20 @@ function renderMovesTab(container) {
         }
         for (const id of ids) {
             const entry = CreativeMode._getState().customMoves[id];
+            const fx = [];
+            if (Array.isArray(entry.drain)) fx.push('吸血' + Math.round(entry.drain[0] / entry.drain[1] * 100) + '%');
+            if (Array.isArray(entry.recoil)) fx.push('反傷' + Math.round(entry.recoil[0] / entry.recoil[1] * 100) + '%');
+            if (entry.secondary && entry.secondary.status) fx.push(entry.secondary.chance + '%' + entry.secondary.status);
             customList.appendChild(el('div', { class: 'cm-list-item' }, [
-                el('span', { text: `${entry.name} (${id}) · ${entry.type} · ${entry.category} · 威力 ${entry.basePower}` }),
-                el('button', {
-                    class: 'cm-btn danger',
-                    text: '刪除',
-                    onclick: () => { CreativeMode.removeCustomMove(id); renderCustomList(); toast('已刪除：' + id); }
-                })
+                el('span', { text: `${entry.name} (${id}) · ${entry.type} · ${entry.category} · 威力 ${entry.basePower}${fx.length ? ' · ' + fx.join(' / ') : ''}` }),
+                el('div', { class: 'cm-row' }, [
+                    el('button', { class: 'cm-btn', text: '編輯', onclick: () => loadMoveForEdit(entry, id) }),
+                    el('button', {
+                        class: 'cm-btn danger',
+                        text: '刪除',
+                        onclick: () => { CreativeMode.removeCustomMove(id); renderCustomList(); toast('已刪除：' + id); }
+                    })
+                ])
             ]));
         }
     }

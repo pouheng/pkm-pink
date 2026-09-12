@@ -173,12 +173,34 @@ function testLegacyNicknameFormat() {
     assertEqual(entry.ability, 'Battle Bond', 'legacy customAbility normalized');
 }
 
+function testCustomMoveEffects() {
+    CreativeMode.addCustomMove({
+        id: 'bouncybubble',
+        name: 'Bouncy Bubble',
+        type: 'Water',
+        category: 'Special',
+        basePower: 60,
+        accuracy: 100,
+        pp: 20,
+        drain: [1, 2],
+        description: '回復造成傷害的50%'
+    });
+    const md = getMoveData('Bouncy Bubble');
+    assertEqual(md.name, 'Bouncy Bubble', 'custom move resolves by name');
+    assert(Array.isArray(md.drain) && md.drain[0] === 1 && md.drain[1] === 2, 'custom move drain effect preserved');
+    assertEqual(md.power, 60, 'custom move power');
+    const pkm = new Pokemon({ name: 'Eevee', lv: 50, moves: ['Bouncy Bubble'] });
+    assertEqual(pkm.moves[0].name, 'Bouncy Bubble', 'pokemon can use custom move with effect');
+    CreativeMode.removeCustomMove('bouncybubble');
+}
+
 async function main() {
     testBaseline();
     testSpeciesOverride();
     testMoveOverride();
     testCustomSpecies();
     testNicknameOverride();
+    testCustomMoveEffects();
     testExportImport();
     testLegacyNicknameFormat();
 

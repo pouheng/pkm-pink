@@ -481,8 +481,20 @@ const CreativeMode = {
             accuracy: entry.accuracy === true ? true : (Number(entry.accuracy) || 100),
             pp: Number(entry.pp) || 10,
             priority: Number(entry.priority) || 0,
-            target: entry.target || 'normal'
+            target: entry.target || 'normal',
+            flags: (entry.flags && typeof entry.flags === 'object') ? clone(entry.flags) : { protect: 1, mirror: 1, metronome: 1 }
         };
+        if (Array.isArray(entry.drain) && entry.drain.length >= 2) {
+            normalized.drain = [Number(entry.drain[0]) || 0, Number(entry.drain[1]) || 1];
+            normalized.flags.heal = 1;
+        }
+        if (Array.isArray(entry.recoil) && entry.recoil.length >= 2) {
+            normalized.recoil = [Number(entry.recoil[0]) || 0, Number(entry.recoil[1]) || 1];
+        }
+        if (entry.secondary && typeof entry.secondary === 'object') {
+            normalized.secondary = clone(entry.secondary);
+        }
+        if (entry.description) normalized.description = String(entry.description);
         state.customMoves[id] = normalized;
         if (state.enabled) applyCustomMove(id);
         saveToStorage();
