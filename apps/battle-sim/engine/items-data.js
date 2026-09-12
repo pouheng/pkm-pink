@@ -83,7 +83,18 @@ export const ITEMS = {
         recoilPercent: 0.1, // 10% 最大HP
         description: '攻击伤害x1.3，但每次攻击损失10%最大HP',
     },
-    
+    // --- 伊布Z (Eevium Z) ---
+    eeviumz: {
+        id: 'eeviumz',
+        name: 'Eevium Z',
+        cnName: '伊布Z',
+        category: 'held',
+        consumable: false,
+        isZ: 'Eevium Z',
+        zMove: 'Extreme Evoboost',
+        description: '伊布專屬 Z 結晶，可將「珍藏」(Last Resort) 昇華為「九彩昇華齊聚頂」(Extreme Evoboost)。',
+    },
+
     // --- 剩饭 (Leftovers) ---
     leftovers: {
         id: 'leftovers',

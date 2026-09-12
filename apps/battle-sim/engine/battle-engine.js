@@ -480,6 +480,12 @@ export class Pokemon {
                 if (nicknameOverride.ability) {
                     effectiveConfig = Object.assign({}, config, { ability: nicknameOverride.ability });
                 }
+                if (nicknameOverride.item) {
+                    effectiveConfig = Object.assign({}, effectiveConfig, { item: nicknameOverride.item });
+                }
+                if (nicknameOverride.mechanic) {
+                    effectiveConfig = Object.assign({}, effectiveConfig, { mechanic: nicknameOverride.mechanic });
+                }
                 if (nicknameOverride.species) {
                     effectiveName = data.name;
                 }

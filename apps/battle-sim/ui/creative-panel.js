@@ -233,6 +233,9 @@ function statsEditor(initial) {
     };
 }
 
+const MOVE_BOOST_KEYS = ['atk', 'def', 'spa', 'spd', 'spe', 'accuracy', 'evasion'];
+const MOVE_BOOST_LABELS = { atk: '攻擊', def: '防禦', spa: '特攻', spd: '特防', spe: '速度', accuracy: '命中', evasion: '閃避' };
+
 function moveEffectsEditor(initial) {
     const src = initial || {};
     const drain = el('input', { type: 'number', min: '0', max: '100', value: String(Array.isArray(src.drain) ? Math.round(src.drain[0] / src.drain[1] * 100) : 0) });
@@ -243,25 +246,82 @@ function moveEffectsEditor(initial) {
     }
     status.value = src.secondary && src.secondary.status ? src.secondary.status : '';
     const chance = el('input', { type: 'number', min: '0', max: '100', value: String(src.secondary && src.secondary.chance != null ? src.secondary.chance : 10) });
+
+    const boostTarget = el('select');
+    boostTarget.appendChild(el('option', { value: 'self', text: '自己（能力上升）' }));
+    boostTarget.appendChild(el('option', { value: 'target', text: '對手（能力下降）' }));
+
+    const boostInputs = {};
+    const boostGrid = el('div', { class: 'cm-stats' });
+    for (const key of MOVE_BOOST_KEYS) {
+        const input = el('input', { type: 'number', min: '-6', max: '6', value: '0' });
+        boostInputs[key] = input;
+        boostGrid.appendChild(el('div', { class: 'cm-stat' }, [
+            el('label', { text: MOVE_BOOST_LABELS[key] }),
+            el('span'),
+            input
+        ]));
+    }
+
     const note = el('input', { type: 'text', placeholder: '例：回復造成傷害的50%', value: src.description || '' });
 
-    const node = el('div', { class: 'cm-row' }, [
-        el('label', { class: 'cm-field', text: '吸血%（回復傷害）' }, [drain]),
-        el('label', { class: 'cm-field', text: '反傷%' }, [recoil]),
-        el('label', { class: 'cm-field', text: '附加狀態' }, [status]),
-        el('label', { class: 'cm-field', text: '狀態機率%' }, [chance]),
-        el('label', { class: 'cm-field', text: '效果說明' }, [note])
+    const node = el('div', {}, [
+        el('div', { class: 'cm-row' }, [
+            el('label', { class: 'cm-field', text: '吸血%（回復傷害）' }, [drain]),
+            el('label', { class: 'cm-field', text: '反傷%' }, [recoil]),
+            el('label', { class: 'cm-field', text: '附加狀態' }, [status]),
+            el('label', { class: 'cm-field', text: '狀態機率%' }, [chance])
+        ]),
+        el('div', { class: 'cm-row' }, [
+            el('span', { class: 'cm-field', text: '能力變化（-6 ~ +6，可同時升降多項）' }, []),
+            el('label', { class: 'cm-field', text: '對象' }, [boostTarget])
+        ]),
+        boostGrid,
+        el('div', { class: 'cm-row' }, [
+            el('label', { class: 'cm-field', text: '效果說明' }, [note])
+        ])
     ]);
+
+    function applyBoostsFrom(values) {
+        const v = values || {};
+        let boosts = null;
+        let target = 'self';
+        if (v.self && v.self.boosts) { boosts = v.self.boosts; target = 'self'; }
+        else if (v.boosts) { boosts = v.boosts; target = 'target'; }
+        else if (v.secondary && v.secondary.boosts) { boosts = v.secondary.boosts; target = 'target'; }
+        for (const key of MOVE_BOOST_KEYS) {
+            boostInputs[key].value = String((boosts && boosts[key] != null) ? boosts[key] : 0);
+        }
+        boostTarget.value = target;
+    }
+    applyBoostsFrom(src);
 
     return {
         node,
-        get() {
+        build(category) {
             const out = {};
             const drainPct = Number(drain.value) || 0;
             if (drainPct > 0) out.drain = [drainPct, 100];
             const recoilPct = Number(recoil.value) || 0;
             if (recoilPct > 0) out.recoil = [recoilPct, 100];
-            if (status.value) out.secondary = { chance: Number(chance.value) || 10, status: status.value };
+
+            const boosts = {};
+            for (const key of MOVE_BOOST_KEYS) {
+                const value = Number(boostInputs[key].value) || 0;
+                if (value) boosts[key] = value;
+            }
+            if (Object.keys(boosts).length) {
+                if (boostTarget.value === 'self') {
+                    out.self = { boosts };
+                } else if (category === 'Status') {
+                    out.boosts = boosts;
+                } else {
+                    out.secondary = Object.assign({}, out.secondary, { boosts });
+                }
+            }
+            if (status.value) {
+                out.secondary = Object.assign({}, out.secondary, { chance: Number(chance.value) || 10, status: status.value });
+            }
             if (note.value.trim()) out.description = note.value.trim();
             return out;
         },
@@ -272,6 +332,7 @@ function moveEffectsEditor(initial) {
             status.value = v.secondary && v.secondary.status ? v.secondary.status : '';
             chance.value = String(v.secondary && v.secondary.chance != null ? v.secondary.chance : 10);
             note.value = v.description || '';
+            applyBoostsFrom(v);
         }
     };
 }
@@ -504,7 +565,7 @@ function renderMovesTab(container) {
                         accuracy: Number(accuracy.value) || 0,
                         pp: Number(pp.value) || 1,
                         priority: Number(priority.value) || 0
-                    }, effects.get()));
+                    }, effects.build(category.value)));
                     toast('已儲存招式覆蓋：' + selectedId);
                 }
             }),
@@ -559,7 +620,7 @@ function renderMovesTab(container) {
                 basePower: Number(addPower.value) || 0,
                 accuracy: Number(addAcc.value) || 100,
                 pp: Number(addPp.value) || 10
-            }, addEffects.get()));
+            }, addEffects.build(addCat.value)));
             if (ok) {
                 if (editingMoveId && editingMoveId !== targetId) CreativeMode.removeCustomMove(editingMoveId);
                 toast((editingMoveId ? '已更新招式：' : '已新增招式：') + addName.value);
@@ -654,6 +715,11 @@ function renderNicknameTab(container) {
     const speciesPicker = buildPicker(speciesItems(), (id) => { targetSpecies = id; }, '可選：替換成其他物種…');
     targetHost.appendChild(speciesPicker);
     const ability = el('input', { type: 'text', placeholder: '牽絆變身' });
+    const item = el('input', { type: 'text', placeholder: 'Eevium Z' });
+    const mechanic = el('select');
+    for (const pair of [['', '無'], ['zmove', 'Z 招式'], ['mega', 'Mega'], ['dynamax', '極巨化'], ['tera', '太晶化']]) {
+        mechanic.appendChild(el('option', { value: pair[0], text: pair[1] }));
+    }
     const note = el('input', { type: 'text', placeholder: '原作動畫形態還原' });
     const stats = statsEditor({ hp: 72, atk: 145, def: 67, spa: 153, spd: 71, spe: 132 });
 
@@ -669,6 +735,8 @@ function renderNicknameTab(container) {
     form.appendChild(el('div', { class: 'cm-row' }, [
         el('label', { class: 'cm-field', text: '暱稱' }, [nickname]),
         el('label', { class: 'cm-field', text: '替換特性（可選）' }, [ability]),
+        el('label', { class: 'cm-field', text: '替換道具（可選）' }, [item]),
+        el('label', { class: 'cm-field', text: '機制（可選）' }, [mechanic]),
         el('label', { class: 'cm-field', text: '備註（可選）' }, [note])
     ]));
     form.appendChild(el('div', { class: 'cm-row' }, [
@@ -692,6 +760,8 @@ function renderNicknameTab(container) {
             const data = { baseStats: stats.get() };
             if (targetSpecies) data.species = targetSpecies;
             if (ability.value) data.ability = ability.value;
+            if (item.value) data.item = item.value;
+            if (mechanic.value) data.mechanic = mechanic.value;
             if (note.value) data.note = note.value;
             const moves = moveInputs.map((inp) => inp.value.trim()).filter(Boolean).slice(0, 4);
             if (moves.length) data.moves = moves;
@@ -712,6 +782,8 @@ function renderNicknameTab(container) {
         editingKey = null;
         nickname.value = '';
         ability.value = '';
+        item.value = '';
+        mechanic.value = '';
         note.value = '';
         moveInputs.forEach((inp) => { inp.value = ''; });
         submitBtn.textContent = '新增覆蓋';
@@ -722,6 +794,8 @@ function renderNicknameTab(container) {
         editingKey = entry.nickname;
         nickname.value = entry.nickname || '';
         ability.value = entry.ability || '';
+        item.value = entry.item || '';
+        mechanic.value = entry.mechanic || '';
         note.value = entry.note || '';
         stats.set(entry.baseStats || { hp: 0, atk: 0, def: 0, spa: 0, spd: 0, spe: 0 });
         const moves = Array.isArray(entry.moves) ? entry.moves : [];

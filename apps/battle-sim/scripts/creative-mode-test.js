@@ -105,6 +105,8 @@ function testNicknameOverride() {
         species: 'greninja',
         baseStats: { hp: 72, atk: 145, def: 67, spa: 153, spd: 71, spe: 132 },
         ability: 'Battle Bond',
+        item: 'Eevium Z',
+        mechanic: 'zmove',
         moves: ['Water Shuriken', 'Night Slash', 'Extrasensory'],
         note: '原作動畫形態還原'
     });
@@ -122,6 +124,8 @@ function testNicknameOverride() {
     assertEqual(pkm.baseStats.spa, 153, 'nickname override spa applies');
     assertEqual(pkm.baseStats.spe, 132, 'nickname override spe applies');
     assertEqual(pkm.ability, 'Battle Bond', 'nickname override ability applies');
+    assertEqual(pkm.item, 'Eevium Z', 'nickname override item applies');
+    assertEqual(pkm.mechanic, 'zmove', 'nickname override mechanic applies');
     assertEqual(pkm.nickname, '小智版甲賀忍蛙', 'nickname is preserved on instance');
     const rule = CreativeMode.resolveNickname('小智版甲賀忍蛙');
     assert(Array.isArray(rule.moves) && rule.moves.length === 3, 'nickname override stores extra pool moves');
@@ -194,6 +198,21 @@ function testCustomMoveEffects() {
     assertEqual(pkm.moves[0].name, '活活氣泡', 'pokemon can use custom move with effect');
     assertEqual(pkm.moves[0].id, 'bouncybubble', 'custom move keeps lookup id for effect resolution');
     CreativeMode.removeCustomMove('bouncybubble');
+
+    CreativeMode.addCustomMove({
+        id: 'testboost',
+        name: '九彩昇華',
+        type: 'Normal',
+        category: 'Status',
+        basePower: 0,
+        accuracy: true,
+        pp: 1,
+        boosts: { atk: 2, def: 2, spa: 2, spd: 2, spe: 2 },
+        description: '全能力+2'
+    });
+    const boostMove = getMoveData('Test Boost');
+    assert(boostMove.boosts && boostMove.boosts.atk === 2 && boostMove.boosts.spe === 2, 'custom move boosts preserved');
+    CreativeMode.removeCustomMove('testboost');
 }
 
 function testDefaultPack() {
@@ -204,7 +223,9 @@ function testDefaultPack() {
     const moves = CreativeMode._getState().customMoves;
     assert(moves.bouncybubble && moves.buzzybuzz, 'default custom moves loaded');
     assertEqual(moves.bouncybubble.drain[0], 50, 'default bouncy bubble drain preserved');
-    assertEqual(overrides['搭檔伊布'].moves.length, 2, 'default partner eevee pool moves');
+    assertEqual(overrides['搭檔伊布'].moves.length, 3, 'default partner eevee pool moves');
+    assertEqual(overrides['搭檔伊布'].item, 'Eevium Z', 'default partner eevee holds Eevium Z');
+    assertEqual(overrides['搭檔伊布'].mechanic, 'zmove', 'default partner eevee is set to Z-move');
     assertEqual(overrides['搭檔伊布'].baseStats.atk, 75, 'default partner eevee stats');
     CreativeMode.resetAll();
 }

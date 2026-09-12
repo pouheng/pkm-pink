@@ -80,8 +80,10 @@ export const DEFAULT_CREATIVE_DATA = {
             nickname: '搭檔伊布',
             species: 'eevee',
             baseStats: { hp: 65, atk: 75, def: 70, spa: 65, spd: 85, spe: 75 },
-            moves: ['bouncybubble', 'buzzybuzz'],
-            note: 'Let\'s Go 搭檔伊布'
+            item: 'Eevium Z',
+            mechanic: 'zmove',
+            moves: ['bouncybubble', 'buzzybuzz', 'lastresort'],
+            note: 'Let\'s Go 搭檔伊布（攜帶伊布Z，珍藏可昇華為九彩昇華齊聚頂）'
         }
     }
 };
@@ -341,6 +343,8 @@ function normalizeNicknameEntry(raw, fallbackSpecies) {
     if (Array.isArray(raw.types) && raw.types.length) out.types = clone(raw.types);
     const ability = raw.ability || raw.customAbility;
     if (ability) out.ability = ability;
+    if (raw.item) out.item = String(raw.item);
+    if (raw.mechanic) out.mechanic = String(raw.mechanic);
     const moves = raw.moves || raw.customMoves;
     if (Array.isArray(moves)) {
         const list = moves.map((move) => String(move || '').trim()).filter(Boolean).slice(0, 4);
@@ -552,6 +556,12 @@ const CreativeMode = {
         }
         if (entry.secondary && typeof entry.secondary === 'object') {
             normalized.secondary = clone(entry.secondary);
+        }
+        if (entry.boosts && typeof entry.boosts === 'object') {
+            normalized.boosts = clone(entry.boosts);
+        }
+        if (entry.self && typeof entry.self === 'object') {
+            normalized.self = clone(entry.self);
         }
         if (entry.description) normalized.description = String(entry.description);
         state.customMoves[id] = normalized;
