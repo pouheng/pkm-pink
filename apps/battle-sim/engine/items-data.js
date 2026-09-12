@@ -95,6 +95,16 @@ export const ITEMS = {
         description: '伊布專屬 Z 結晶，可將「珍藏」(Last Resort) 昇華為「九彩昇華齊聚頂」(Extreme Evoboost)。',
     },
 
+    // --- 羈絆圍巾 (Bond Scarf) ---
+    bondscarf: {
+        id: 'bondscarf',
+        name: 'Bond Scarf',
+        cnName: '羈絆圍巾',
+        category: 'held',
+        consumable: false,
+        description: '搭檔伊布的羈絆道具，對應招式「虹光星海大爆發」。',
+    },
+
     // --- 剩饭 (Leftovers) ---
     leftovers: {
         id: 'leftovers',

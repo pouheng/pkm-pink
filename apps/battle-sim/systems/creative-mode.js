@@ -73,6 +73,20 @@ export const DEFAULT_CREATIVE_DATA = {
             flags: { protect: 1, mirror: 1, metronome: 1 },
             secondary: { chance: 100, status: 'par' },
             description: '麻麻電擊有100%的機率使目標陷入麻痺狀態。'
+        },
+        rainbownebulanova: {
+            num: 0,
+            name: '虹光星海大爆發',
+            type: 'Normal',
+            category: 'Special',
+            basePower: 195,
+            accuracy: true,
+            pp: 5,
+            priority: 0,
+            target: 'normal',
+            flags: { protect: 1, mirror: 1, metronome: 1 },
+            self: { boosts: { def: 1, spd: 1, spe: 1 } },
+            description: '必中。招式發動後，自己的防禦、特防與速度各提升 1 級（羈絆防護）。'
         }
     },
     nicknameOverrides: {
@@ -80,9 +94,8 @@ export const DEFAULT_CREATIVE_DATA = {
             nickname: '搭檔伊布',
             species: 'eevee',
             baseStats: { hp: 65, atk: 75, def: 70, spa: 65, spd: 85, spe: 75 },
-            item: 'Eevium Z',
-            mechanic: 'zmove',
-            moves: ['bouncybubble', 'buzzybuzz', 'lastresort'],
+            item: '羈絆圍巾',
+            moves: ['bouncybubble', 'buzzybuzz', 'rainbownebulanova'],
             note: 'Let\'s Go 搭檔伊布（攜帶伊布Z，珍藏可昇華為九彩昇華齊聚頂）'
         }
     }

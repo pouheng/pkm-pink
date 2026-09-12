@@ -224,8 +224,9 @@ function testDefaultPack() {
     assert(moves.bouncybubble && moves.buzzybuzz, 'default custom moves loaded');
     assertEqual(moves.bouncybubble.drain[0], 50, 'default bouncy bubble drain preserved');
     assertEqual(overrides['搭檔伊布'].moves.length, 3, 'default partner eevee pool moves');
-    assertEqual(overrides['搭檔伊布'].item, 'Eevium Z', 'default partner eevee holds Eevium Z');
-    assertEqual(overrides['搭檔伊布'].mechanic, 'zmove', 'default partner eevee is set to Z-move');
+    assertEqual(overrides['搭檔伊布'].item, '羈絆圍巾', 'default partner eevee holds Bond Scarf');
+    assert(moves.rainbownebulanova && moves.rainbownebulanova.self && moves.rainbownebulanova.self.boosts.def === 1, 'default rainbow nebula nova self boosts');
+    assertEqual(moves.rainbownebulanova.accuracy, true, 'default rainbow nebula nova is sure-hit');
     assertEqual(overrides['搭檔伊布'].baseStats.atk, 75, 'default partner eevee stats');
     CreativeMode.resetAll();
 }
