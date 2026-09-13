@@ -94,10 +94,42 @@ function preloadSprite(name, isBack = false) {
 }
 
 /**
+ * 查詢創造模式自訂叫聲 URL（無則回傳 null）
+ */
+function resolveCustomCryUrl(name) {
+    try {
+        if (typeof window !== 'undefined' && window.CreativeMode && typeof window.CreativeMode.getSpeciesMedia === 'function') {
+            const media = window.CreativeMode.getSpeciesMedia(name);
+            return (media && media.cry) || null;
+        }
+    } catch (e) {}
+    return null;
+}
+
+/**
  * 预加载叫声
  */
 function preloadCry(name) {
     return new Promise((resolve) => {
+        const customUrl = resolveCustomCryUrl(name);
+        if (customUrl) {
+            const cacheKey = 'custom:' + name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (PreloadCache.cries[cacheKey]) {
+                resolve(PreloadCache.cries[cacheKey]);
+                return;
+            }
+            const audio = new Audio();
+            audio.preload = 'auto';
+            audio.oncanplaythrough = () => {
+                PreloadCache.cries[cacheKey] = audio;
+                resolve(audio);
+            };
+            audio.onerror = () => resolve(null);
+            audio.src = customUrl;
+            setTimeout(() => resolve(null), 5000);
+            return;
+        }
+
         let id = name.toLowerCase().replace(/[^a-z0-9]/g, '');
         
         if (typeof POKEDEX !== 'undefined' && POKEDEX[id] && POKEDEX[id].baseSpecies) {
@@ -524,7 +556,24 @@ function playCachedCry(name, volume = 0.45) {
     if (typeof window !== 'undefined' && window.GAME_SETTINGS && !window.GAME_SETTINGS.enableSFX) {
         return;
     }
-    
+
+    const customUrl = resolveCustomCryUrl(name);
+    if (customUrl) {
+        const cacheKey = 'custom:' + name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cached = PreloadCache.cries[cacheKey];
+        if (cached) {
+            const clone = cached.cloneNode();
+            clone.volume = volume;
+            clone.play().catch(() => {});
+        } else {
+            const cryAudio = new Audio(customUrl);
+            cryAudio.volume = volume;
+            cryAudio.play().catch(() => {});
+        }
+        console.log(`[CRY] Playing custom: ${name}`);
+        return;
+    }
+
     let id = name.toLowerCase().replace(/[^a-z0-9]/g, '');
     
     if (typeof POKEDEX !== 'undefined' && POKEDEX[id] && POKEDEX[id].baseSpecies) {

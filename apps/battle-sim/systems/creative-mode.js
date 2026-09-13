@@ -120,6 +120,33 @@ function normalizeNickname(nickname) {
     return String(nickname || '').trim().toLowerCase();
 }
 
+function normalizeBaseStats(raw) {
+    return Object.assign(
+        { hp: 50, atk: 50, def: 50, spa: 50, spd: 50, spe: 50 },
+        clone(raw || {})
+    );
+}
+
+function normalizeSpeciesEntry(raw) {
+    if (!raw || !raw.name) return null;
+    const entry = {
+        num: raw.num || 0,
+        name: String(raw.name),
+        types: Array.isArray(raw.types) && raw.types.length ? raw.types.slice(0, 2) : ['Normal'],
+        baseStats: normalizeBaseStats(raw.baseStats),
+        abilities: clone(raw.abilities && typeof raw.abilities === 'object' ? raw.abilities : { 0: 'Overgrow' })
+    };
+    if (raw.sprite) entry.sprite = String(raw.sprite);
+    if (raw.backSprite) entry.backSprite = String(raw.backSprite);
+    if (raw.cry) entry.cry = String(raw.cry);
+    if (raw.note) entry.note = String(raw.note);
+    if (Array.isArray(raw.moves)) {
+        const list = raw.moves.map((m) => String(m || '').trim()).filter(Boolean);
+        if (list.length) entry.moves = list;
+    }
+    return entry;
+}
+
 function getPokedex() {
     if (typeof globalThis !== 'undefined' && globalThis.POKEDEX) return globalThis.POKEDEX;
     if (typeof window !== 'undefined' && window.POKEDEX) return window.POKEDEX;
@@ -515,17 +542,42 @@ const CreativeMode = {
         if (!entry || !entry.name) return false;
         const id = normalizeId(entry.id || entry.name);
         if (!id) return false;
-        const normalized = {
-            num: entry.num || 0,
-            name: entry.name,
-            types: Array.isArray(entry.types) && entry.types.length ? clone(entry.types) : ['Normal'],
-            baseStats: Object.assign(
-                { hp: 50, atk: 50, def: 50, spa: 50, spd: 50, spe: 50 },
-                clone(entry.baseStats || {})
-            ),
-            abilities: clone(entry.abilities || { 0: 'Overgrow' })
-        };
+        const normalized = normalizeSpeciesEntry(entry);
+        if (!normalized) return false;
+
+        // 先清除此基礎形態所有既有的形態條目
+        for (const key of Object.keys(state.customSpecies)) {
+            if (key !== id && state.customSpecies[key] && state.customSpecies[key]._formOf === id) {
+                delete state.customSpecies[key];
+                if (state.enabled) restoreSpecies(key);
+            }
+        }
+
         state.customSpecies[id] = normalized;
+
+        // 形態：每一個都獨立註冊為 POKEDEX 條目（key = baseId + formId）
+        const forms = Array.isArray(entry.forms) ? entry.forms : [];
+        for (const form of forms) {
+            const fid = normalizeId(form.id || form.name);
+            if (!fid) continue;
+            const formEntry = clone(normalized);
+            formEntry.name = String(form.name || (normalized.name + '-' + fid));
+            if (Array.isArray(form.types) && form.types.length) formEntry.types = form.types.slice(0, 2);
+            if (form.baseStats) formEntry.baseStats = normalizeBaseStats(form.baseStats);
+            if (form.abilities) formEntry.abilities = clone(form.abilities);
+            if (form.sprite) formEntry.sprite = String(form.sprite);
+            if (form.backSprite) formEntry.backSprite = String(form.backSprite);
+            if (form.cry) formEntry.cry = String(form.cry);
+            if (Array.isArray(form.moves)) {
+                const list = form.moves.map((m) => String(m || '').trim()).filter(Boolean);
+                if (list.length) formEntry.moves = list;
+            }
+            if (form.note) formEntry.note = String(form.note);
+            formEntry._formOf = id;
+            state.customSpecies[id + fid] = formEntry;
+            if (state.enabled) applyCustomSpecies(id + fid);
+        }
+
         if (state.enabled) applyCustomSpecies(id);
         saveToStorage();
         emitChange();
@@ -535,8 +587,14 @@ const CreativeMode = {
     removeCustomSpecies(id) {
         const key = normalizeId(id);
         if (!state.customSpecies[key]) return false;
-        delete state.customSpecies[key];
-        if (state.enabled) restoreSpecies(key);
+        const baseOf = state.customSpecies[key]._formOf || key;
+        const ids = Object.keys(state.customSpecies).filter(
+            (k) => k === baseOf || (state.customSpecies[k] && state.customSpecies[k]._formOf === baseOf)
+        );
+        for (const k of ids) {
+            delete state.customSpecies[k];
+            if (state.enabled) restoreSpecies(k);
+        }
         saveToStorage();
         emitChange();
         return true;
@@ -544,6 +602,45 @@ const CreativeMode = {
 
     isCustomSpecies(id) {
         return !!state.customSpecies[normalizeId(id)];
+    },
+
+    /**
+     * 依「物種 id」或「顯示名稱」找出對應的自訂寶可夢 id（含形態）。
+     * 戰鬥時寶可夢可能以英文 id 或中文名建構，兩種都試著對上。
+     * @param {string} nameOrId
+     * @returns {string|null}
+     */
+    findCustomSpeciesId(nameOrId) {
+        const raw = String(nameOrId || '').trim().toLowerCase();
+        if (!raw) return null;
+        if (state.customSpecies[raw]) return raw;
+        const rawNorm = raw.replace(/[^a-z0-9-]/g, '');
+        for (const id of Object.keys(state.customSpecies)) {
+            const e = state.customSpecies[id];
+            if (!e) continue;
+            const n = String(e.name || '').trim().toLowerCase();
+            if (n === raw) return id;
+            if (rawNorm && n.replace(/[^a-z0-9-]/g, '') === rawNorm) return id;
+            if (normalizeId(e.name) && !rawNorm && normalizeId(e.name) === raw) return id;
+        }
+        return null;
+    },
+
+    /**
+     * 取得自訂寶可夢的圖像 / 叫聲素材（供引擎與 UI 使用）。
+     * @param {string} nameOrId
+     * @returns {{id: string, sprite: string|null, backSprite: string|null, cry: string|null}|null}
+     */
+    getSpeciesMedia(nameOrId) {
+        const id = this.findCustomSpeciesId(nameOrId);
+        if (!id) return null;
+        const e = state.customSpecies[id];
+        return {
+            id,
+            sprite: e.sprite || null,
+            backSprite: e.backSprite || null,
+            cry: e.cry || null
+        };
     },
 
     // ---- 新增招式 ----

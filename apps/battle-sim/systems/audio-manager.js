@@ -227,7 +227,21 @@ window.playPokemonCry = function(speciesName) {
         playCachedCry(speciesName, CRY_VOLUME);
         return;
     }
-    
+
+    // 創造模式自訂叫聲
+    try {
+        if (typeof window !== 'undefined' && window.CreativeMode && typeof window.CreativeMode.getSpeciesMedia === 'function') {
+            const media = window.CreativeMode.getSpeciesMedia(speciesName);
+            if (media && media.cry) {
+                const customAudio = new Audio(media.cry);
+                customAudio.volume = CRY_VOLUME;
+                customAudio.play().catch(() => {});
+                console.log(`[CRY] Playing custom: ${speciesName}`);
+                return;
+            }
+        }
+    } catch (e) {}
+
     // Fallback: 在线加载
     let id = speciesName.toLowerCase().replace(/[^a-z0-9]/g, '');
     

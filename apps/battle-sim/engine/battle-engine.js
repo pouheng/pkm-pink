@@ -849,6 +849,14 @@ export class Pokemon {
     
     // 获取精灵图 URL
     getSprite(isBack = false) {
+        // 創造模式自訂寶可夢：優先使用玩家提供的戰鬥 gif（含形態與背面）
+        const customMedia = (typeof window !== 'undefined' && window.CreativeMode && typeof window.CreativeMode.getSpeciesMedia === 'function')
+            ? window.CreativeMode.getSpeciesMedia(this.name)
+            : null;
+        if (customMedia && customMedia.sprite) {
+            return isBack && customMedia.backSprite ? customMedia.backSprite : customMedia.sprite;
+        }
+
         // 非官方 Mega：返回基础形态的图片 URL
         if (this.isUnofficialMega && this.megaTargetId) {
             const baseSpecies = this.megaTargetId.replace(/mega.*$/i, '');

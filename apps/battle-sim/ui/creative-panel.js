@@ -105,6 +105,16 @@ function injectStyles() {
     .cm-picker{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
     .cm-picker select{min-width:260px;max-width:100%}
     .cm-tag{font-size:11px;color:#ffd166;border:1px solid #55492a;border-radius:6px;padding:1px 6px}
+    .cm-sprite-box{width:96px;height:96px;display:flex;align-items:center;justify-content:center;
+        background:#10152a;border:1px solid #2c3450;border-radius:10px;overflow:hidden;flex-shrink:0}
+    .cm-sprite-box img{max-width:90%;max-height:90%;object-fit:contain;image-rendering:pixelated}
+    .cm-sprite-box.sm{width:56px;height:56px}
+    .cm-media-hint{font-size:11px;color:#7f8aa8;line-height:1.5}
+    .cm-form-editor{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+    .cm-form-card{background:#0f1424;border:1px solid #262e47;border-radius:8px;padding:10px 12px}
+    .cm-form-card .cm-row{margin-bottom:8px}
+    .cm-remove{background:transparent;border:1px solid #7a3550;color:#ff9cbc;border-radius:6px;
+        padding:4px 10px;cursor:pointer;font-family:inherit;font-size:12px}
     .cm-toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);z-index:100000;
         background:#1f3a2c;color:#8ef0b8;border:1px solid #2f6b4b;border-radius:8px;
         padding:10px 18px;font-size:13px;opacity:0;transition:opacity .2s}
@@ -139,6 +149,121 @@ function moveItems() {
         const data = CreativeMode.getMove(id);
         return { id, name: data ? data.name : id };
     });
+}
+
+function defaultSpriteUrl(id) {
+    const norm = String(id || 'pikachu').toLowerCase().replace(/[^a-z0-9-]/g, '') || 'pikachu';
+    return `https://play.pokemonshowdown.com/sprites/ani/${norm}.gif`;
+}
+
+function speciesPreviewUrl(id) {
+    const media = CreativeMode.getSpeciesMedia(id);
+    if (media && media.sprite) return media.sprite;
+    return defaultSpriteUrl(id);
+}
+
+function spritePreviewBox(fallbackId) {
+    const img = el('img', { alt: '' });
+    const box = el('div', { class: 'cm-sprite-box' }, [img]);
+    const setUrl = (url) => {
+        const target = (url && String(url).trim())
+            ? String(url).trim()
+            : defaultSpriteUrl(fallbackId);
+        img.setAttribute('src', target);
+    };
+    img.addEventListener('error', () => {
+        const fallback = defaultSpriteUrl(fallbackId);
+        if (img.getAttribute('src') !== fallback) img.setAttribute('src', fallback);
+    });
+    setUrl('');
+    return { node: box, img, setUrl };
+}
+
+function formsEditor() {
+    const list = [];
+    const host = el('div', { class: 'cm-form-editor' });
+    const addRow = (value) => {
+        const id = el('input', { type: 'text', placeholder: 'mega', value: (value && value.id) || '' });
+        const name = el('input', { type: 'text', placeholder: '超夢X', value: (value && value.name) || '' });
+        const t1 = el('select');
+        const t2 = el('select');
+        for (const sel of [t1, t2]) {
+            sel.appendChild(el('option', { value: '', text: '（沿用）' }));
+            for (const t of POKEMON_TYPES) sel.appendChild(el('option', { value: t, text: t }));
+        }
+        t1.value = (value && value.types && value.types[0]) || '';
+        t2.value = (value && value.types && value.types[1]) || '';
+        const sprite = el('input', { type: 'text', placeholder: 'hi-res / 戰鬥 gif 網址', value: (value && value.sprite) || '' });
+        const backSprite = el('input', { type: 'text', placeholder: '背面 gif（可選）', value: (value && value.backSprite) || '' });
+        const cry = el('input', { type: 'text', placeholder: '叫聲 mp3 網址', value: (value && value.cry) || '' });
+        const ability = el('input', { type: 'text', placeholder: '替換特性（0）', value: (value && value.abilities && value.abilities['0']) || '' });
+        const row = { id, name, t1, t2, sprite, backSprite, cry, ability, dom: null };
+
+        const card = el('div', { class: 'cm-form-card' }, [
+            el('div', { class: 'cm-row' }, [
+                el('label', { class: 'cm-field', text: '形態 ID' }, [id]),
+                el('label', { class: 'cm-field', text: '形態名稱' }, [name]),
+                el('label', { class: 'cm-field', text: '屬性 1' }, [t1]),
+                el('label', { class: 'cm-field', text: '屬性 2' }, [t2]),
+                el('label', { class: 'cm-field', text: '特性 0' }, [ability]),
+                el('button', {
+                    class: 'cm-remove',
+                    text: '刪除此形態',
+                    onclick: () => {
+                        const i = list.indexOf(row);
+                        if (i >= 0) list.splice(i, 1);
+                        host.removeChild(card);
+                    }
+                })
+            ]),
+            el('div', { class: 'cm-row' }, [
+                el('label', { class: 'cm-field', text: '戰鬥 gif' }, [sprite]),
+                el('label', { class: 'cm-field', text: '背面 gif' }, [backSprite]),
+                el('label', { class: 'cm-field', text: '叫聲' }, [cry])
+            ])
+        ]);
+        row.dom = card;
+        list.push(row);
+        host.appendChild(card);
+    };
+
+    const addBtn = el('button', {
+        class: 'cm-btn',
+        text: '＋ 新增形態',
+        onclick: () => addRow(null)
+    });
+
+    const node = el('div', { class: 'cm-section', id: 'cm-forms-section' }, [
+        el('h3', { text: '形態（可選，各自獨立為一隻寶可夢）' }),
+        el('p', { class: 'cm-media-hint', text: '每個形態可設定自己的戰鬥 gif、背面 gif 與叫聲；資料會以「寶可夢ID + 形態ID」註冊成獨立物種，例如 dracohero 與 dracoheromega。' }),
+        host,
+        el('div', { class: 'cm-row' }, [addBtn])
+    ]);
+
+    return {
+        node,
+        set(forms) {
+            list.length = 0;
+            host.innerHTML = '';
+            if (Array.isArray(forms)) {
+                for (const f of forms) addRow(f);
+            }
+        },
+        get() {
+            return list.map((row) => {
+                const out = { id: row.id.value.trim(), name: row.name.value.trim() };
+                if (row.id.value.trim() && !row.name.value.trim()) out.name = row.id.value.trim();
+                const types = [row.t1.value];
+                if (row.t2.value && row.t2.value !== row.t1.value) types.push(row.t2.value);
+                if (types.some(Boolean)) out.types = types.filter(Boolean);
+                if (row.sprite.value.trim()) out.sprite = row.sprite.value.trim();
+                if (row.backSprite.value.trim()) out.backSprite = row.backSprite.value.trim();
+                if (row.cry.value.trim()) out.cry = row.cry.value.trim();
+                if (row.ability.value.trim()) out.abilities = { 0: row.ability.value.trim() };
+                return out;
+            }).filter((f) => f.id || f.name);
+        }
+    };
 }
 
 /**
@@ -398,6 +523,11 @@ function typeSelectors(initial) {
             const list = [first.value];
             if (second.value) list.push(second.value);
             return list.filter(Boolean);
+        },
+        set(types) {
+            const list = Array.isArray(types) ? types : [];
+            first.value = list[0] || 'Normal';
+            second.value = list[1] || '';
         }
     };
 }
@@ -435,6 +565,17 @@ function renderSpeciesTab(container) {
         const ability0 = el('input', { type: 'text', value: (data.abilities && data.abilities['0']) || '' });
         const ability1 = el('input', { type: 'text', value: (data.abilities && data.abilities['1']) || '' });
         const abilityH = el('input', { type: 'text', value: (data.abilities && data.abilities['H']) || '' });
+
+        const preview = spritePreviewBox(selectedId);
+        preview.setUrl(speciesPreviewUrl(selectedId));
+        editorHost.appendChild(el('div', { class: 'cm-row' }, [
+            preview.node,
+            el('button', {
+                class: 'cm-btn',
+                text: '播放叫聲',
+                onclick: () => { if (typeof window.playPokemonCry === 'function') window.playPokemonCry(data.name || selectedId); }
+            })
+        ]));
 
         editorHost.appendChild(el('div', { class: 'cm-row' }, [
             el('label', { class: 'cm-field', text: '顯示名稱' }, [nameInput]),
@@ -483,62 +624,148 @@ function renderSpeciesTab(container) {
 
     const addForm = el('div', { class: 'cm-section' });
     addForm.appendChild(el('h3', { text: '新增寶可夢' }));
-    const addId = el('input', { type: 'text', placeholder: 'pikachu-custom' });
-    const addName = el('input', { type: 'text', placeholder: '自訂皮卡丘' });
+    const addId = el('input', { type: 'text', placeholder: 'dracohero' });
+    const addName = el('input', { type: 'text', placeholder: '龍之英雄' });
     const addStats = statsEditor({ hp: 50, atk: 50, def: 50, spa: 50, spd: 50, spe: 50 });
     const addTypes = typeSelectors(['Normal']);
     const addAbility = el('input', { type: 'text', placeholder: 'Overgrow' });
+    const addSprite = el('input', { type: 'text', placeholder: 'https://…/battle.gif', value: '' });
+    const addBackSprite = el('input', { type: 'text', placeholder: '背面 gif（可選）', value: '' });
+    const addCry = el('input', { type: 'text', placeholder: 'https://…/cry.mp3', value: '' });
+    const addMediaPreview = spritePreviewBox(null);
+    let editingCustomId = null;
+
+    const refreshPreview = () => {
+        const idInput = addId.value.trim();
+        const mediaUrl = addSprite.value.trim();
+        addMediaPreview.setUrl(mediaUrl || (idInput ? speciesPreviewUrl(idInput) : ''));
+    };
+    addId.addEventListener('input', refreshPreview);
+    addSprite.addEventListener('input', refreshPreview);
+
+    const addForms = formsEditor();
+
     addForm.appendChild(el('div', { class: 'cm-row' }, [
-        el('label', { class: 'cm-field', text: 'ID' }, [addId]),
-        el('label', { class: 'cm-field', text: '名稱' }, [addName]),
-        el('label', { class: 'cm-field', text: '特性 0' }, [addAbility])
+        addMediaPreview.node,
+        el('div', {}, [
+            el('div', { class: 'cm-row' }, [
+                el('label', { class: 'cm-field', text: 'ID' }, [addId]),
+                el('label', { class: 'cm-field', text: '名稱' }, [addName]),
+                el('label', { class: 'cm-field', text: '特性 0' }, [addAbility])
+            ]),
+            el('p', { class: 'cm-media-hint', text: '左側預覽會即時更新。玩家需自行準備素材（gif / mp3），可直接貼圖網、GIF 或任何直連網址。' })
+        ])
     ]));
     addForm.appendChild(addTypes.node);
     addForm.appendChild(addStats.node);
-    addForm.appendChild(el('div', { class: 'cm-row' }, [
-        el('button', {
-            class: 'cm-btn primary',
-            text: '新增寶可夢',
-            onclick: () => {
-                if (!addName.value) { toast('請輸入名稱', true); return; }
-                const ok = CreativeMode.addCustomSpecies({
-                    id: addId.value || addName.value,
-                    name: addName.value,
-                    types: addTypes.get(),
-                    baseStats: addStats.get(),
-                    abilities: addAbility.value ? { 0: addAbility.value } : { 0: 'Overgrow' }
-                });
-                if (ok) {
-                    toast('已新增寶可夢：' + addName.value);
-                    addId.value = '';
-                    addName.value = '';
-                } else {
-                    toast('新增失敗', true);
-                }
-            }
-        })
+    addForm.appendChild(el('div', { class: 'cm-section', id: 'cm-media-section' }, [
+        el('h3', { text: '素材（玩家自備）' }),
+        el('p', { class: 'cm-media-hint', text: '輸入直連網址即可，可用 GIPHY 直連、imgur 直連或自己的伺服器。留空則使用 Showdown 預設圖 / 叫聲。' }),
+        el('div', { class: 'cm-row' }, [
+            el('label', { class: 'cm-field', text: '戰鬥 gif（正面）' }, [addSprite]),
+            el('label', { class: 'cm-field', text: '背面 gif（可選）' }, [addBackSprite]),
+            el('label', { class: 'cm-field', text: '叫聲 mp3' }, [addCry])
+        ])
     ]));
+    addForm.appendChild(addForms.node);
+
+    const submitSpeciesBtn = el('button', {
+        class: 'cm-btn primary',
+        text: '新增寶可夢',
+        onclick: () => {
+            if (!addName.value) { toast('請輸入名稱', true); return; }
+            const ok = CreativeMode.addCustomSpecies({
+                id: addId.value.trim() || addName.value,
+                name: addName.value,
+                types: addTypes.get(),
+                baseStats: addStats.get(),
+                abilities: addAbility.value ? { 0: addAbility.value } : { 0: 'Overgrow' },
+                sprite: addSprite.value.trim() || undefined,
+                backSprite: addBackSprite.value.trim() || undefined,
+                cry: addCry.value.trim() || undefined,
+                forms: addForms.get()
+            });
+            if (ok) {
+                toast((editingCustomId ? '已更新寶可夢：' : '已新增寶可夢：') + addName.value);
+                editingCustomId = null;
+                addId.value = '';
+                addName.value = '';
+                addSprite.value = '';
+                addBackSprite.value = '';
+                addCry.value = '';
+                addAbility.value = '';
+                addTypes.set(['Normal']);
+                addStats.set({ hp: 50, atk: 50, def: 50, spa: 50, spd: 50, spe: 50 });
+                addForms.set([]);
+                refreshPreview();
+                submitSpeciesBtn.textContent = '新增寶可夢';
+                renderCustomList();
+            } else {
+                toast('新增失敗', true);
+            }
+        }
+    });
+    addForm.appendChild(el('div', { class: 'cm-row' }, [submitSpeciesBtn]));
 
     const customList = el('div', { class: 'cm-list' });
     function renderCustomList() {
         customList.innerHTML = '';
-        const ids = Object.keys(CreativeMode._getState().customSpecies);
+        const state = CreativeMode._getState();
+        const ids = Object.keys(state.customSpecies).filter((id) => !state.customSpecies[id]._formOf);
         if (!ids.length) {
             customList.appendChild(el('p', { class: 'cm-hint', text: '目前沒有自訂寶可夢。' }));
             return;
         }
         for (const id of ids) {
-            const entry = CreativeMode._getState().customSpecies[id];
+            const entry = state.customSpecies[id];
+            const formCount = Object.keys(state.customSpecies).filter((k) => state.customSpecies[k]._formOf === id).length;
+            const mediaText = (entry.sprite ? '· gif' : '') + (entry.cry ? '· 叫聲' : '');
             customList.appendChild(el('div', { class: 'cm-list-item' }, [
-                el('span', { text: `${entry.name} (${id}) · BST ${CreativeMode.calcBST(entry.baseStats)}` }),
-                el('button', {
-                    class: 'cm-btn danger',
-                    text: '刪除',
-                    onclick: () => { CreativeMode.removeCustomSpecies(id); renderCustomList(); toast('已刪除：' + id); }
-                })
+                el('div', { style: 'display:flex;align-items:center;gap:10px' }, [
+                    spritePreviewBox(id).node,
+                    el('span', {
+                        text: `${entry.name} (${id}) · BST ${CreativeMode.calcBST(entry.baseStats)}${formCount ? ' · ' + formCount + ' 形態' : ''}${mediaText ? ' ' + mediaText : ''}`
+                    })
+                ]),
+                el('div', { class: 'cm-row' }, [
+                    el('button', {
+                        class: 'cm-btn',
+                        text: '編輯',
+                        onclick: () => {
+                            editCustomSpecies(id, entry);
+                            renderCustomList();
+                        }
+                    }),
+                    el('button', {
+                        class: 'cm-btn danger',
+                        text: '刪除',
+                        onclick: () => { CreativeMode.removeCustomSpecies(id); renderCustomList(); toast('已刪除：' + id); }
+                    })
+                ])
             ]));
         }
     }
+
+    function editCustomSpecies(id, entry) {
+        editingCustomId = id;
+        addId.value = id;
+        addName.value = entry.name || '';
+        addAbility.value = (entry.abilities && entry.abilities['0']) || '';
+        addSprite.value = entry.sprite || '';
+        addBackSprite.value = entry.backSprite || '';
+        addCry.value = entry.cry || '';
+        addTypes.set(entry.types || ['Normal']);
+        addStats.set(entry.baseStats || { hp: 50, atk: 50, def: 50, spa: 50, spd: 50, spe: 50 });
+        const state = CreativeMode._getState();
+        const formEntries = Object.keys(state.customSpecies)
+            .filter((k) => state.customSpecies[k]._formOf === id)
+            .map((k) => state.customSpecies[k]);
+        addForms.set(formEntries);
+        refreshPreview();
+        submitSpeciesBtn.textContent = '更新寶可夢';
+        try { addForm.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+    }
+
     renderCustomList();
     addForm.appendChild(customList);
 
@@ -761,7 +988,8 @@ function renderNicknameTab(container) {
     const nickname = el('input', { type: 'text', placeholder: '小智版甲賀忍蛙' });
     const targetHost = el('div');
     let targetSpecies = '';
-    const speciesPicker = buildPicker(speciesItems(), (id) => { targetSpecies = id; }, '可選：替換成其他物種…');
+    const nickPreview = spritePreviewBox(null);
+    const speciesPicker = buildPicker(speciesItems(), (id) => { targetSpecies = id; nickPreview.setUrl(id ? speciesPreviewUrl(id) : ''); }, '可選：替換成其他物種…');
     targetHost.appendChild(speciesPicker);
     const ability = el('input', { type: 'text', placeholder: '牽絆變身' });
     const item = el('input', { type: 'text', placeholder: 'Eevium Z' });
@@ -790,7 +1018,8 @@ function renderNicknameTab(container) {
     ]));
     form.appendChild(el('div', { class: 'cm-row' }, [
         el('span', { class: 'cm-field', text: '替換物種（可選，留空則沿用原物種）' }, []),
-        targetHost
+        targetHost,
+        nickPreview.node
     ]));
     form.appendChild(stats.node);
     form.appendChild(el('div', { class: 'cm-row' }, [
@@ -851,6 +1080,7 @@ function renderNicknameTab(container) {
         moveInputs.forEach((inp, i) => { inp.value = moves[i] || ''; });
         speciesPicker.setValue(entry.species || '');
         targetSpecies = entry.species || '';
+        nickPreview.setUrl(entry.species ? speciesPreviewUrl(entry.species) : '');
         submitBtn.textContent = '更新覆蓋';
         cancelBtn.style.display = '';
         try { form.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
