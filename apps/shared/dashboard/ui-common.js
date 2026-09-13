@@ -227,6 +227,8 @@ ${(bodyLines || []).filter(Boolean).join('\n')}`;
             const hasRegionalSuffix = /-(hisui|alola|galar|paldea)$/.test(showdownSlug);
             const slugPixel = hasRegionalSuffix ? showdownSlug : showdownSlug.replace(/-/g, '');
             let urlSv = `https://img.pokemondb.net/sprites/scarlet-violet/normal/${spriteSlug}.png`;
+            const customUrlSv = (typeof root.getCustomSpeciesIcon === 'function' && root.getCustomSpeciesIcon(speciesName)) || null;
+            if (customUrlSv) urlSv = customUrlSv;
             let urlSwsh = `https://img.pokemondb.net/sprites/sword-shield/normal/${spriteSlug}.png`;
             let urlPx = `https://play.pokemonshowdown.com/sprites/gen5/${slugPixel}.png`;
             let regionalClass = '';

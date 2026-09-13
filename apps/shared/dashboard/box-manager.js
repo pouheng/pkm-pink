@@ -45,6 +45,13 @@
 
         function generateSmartIconHex(name, cssClass = '') {
             if (!name) return '';
+
+            // 創造模式自訂圖標優先
+            const customIcon = (typeof root.getCustomSpeciesIcon === 'function' && root.getCustomSpeciesIcon(name)) || null;
+            if (customIcon) {
+                return `<img src="${customIcon}" class="${cssClass || ''}" loading="lazy">`;
+            }
+
             const rawSlug = String(name).trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
             const spriteSlug = (typeof root.buildSpriteSlug === 'function' ? root.buildSpriteSlug(name) : rawSlug) || rawSlug;
             const showdownSlug = spriteSlug.replace(/[^a-z0-9-]/g, '');

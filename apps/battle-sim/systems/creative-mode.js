@@ -138,6 +138,7 @@ function normalizeSpeciesEntry(raw) {
     };
     if (raw.sprite) entry.sprite = String(raw.sprite);
     if (raw.backSprite) entry.backSprite = String(raw.backSprite);
+    if (raw.icon) entry.icon = String(raw.icon);
     if (raw.cry) entry.cry = String(raw.cry);
     if (raw.note) entry.note = String(raw.note);
     if (Array.isArray(raw.moves)) {
@@ -567,6 +568,7 @@ const CreativeMode = {
             if (form.abilities) formEntry.abilities = clone(form.abilities);
             if (form.sprite) formEntry.sprite = String(form.sprite);
             if (form.backSprite) formEntry.backSprite = String(form.backSprite);
+            if (form.icon) formEntry.icon = String(form.icon);
             if (form.cry) formEntry.cry = String(form.cry);
             if (Array.isArray(form.moves)) {
                 const list = form.moves.map((m) => String(m || '').trim()).filter(Boolean);
@@ -629,7 +631,7 @@ const CreativeMode = {
     /**
      * 取得自訂寶可夢的圖像 / 叫聲素材（供引擎與 UI 使用）。
      * @param {string} nameOrId
-     * @returns {{id: string, sprite: string|null, backSprite: string|null, cry: string|null}|null}
+     * @returns {{id: string, sprite: string|null, backSprite: string|null, icon: string|null, cry: string|null}|null}
      */
     getSpeciesMedia(nameOrId) {
         const id = this.findCustomSpeciesId(nameOrId);
@@ -639,6 +641,7 @@ const CreativeMode = {
             id,
             sprite: e.sprite || null,
             backSprite: e.backSprite || null,
+            icon: e.icon || null,
             cry: e.cry || null
         };
     },

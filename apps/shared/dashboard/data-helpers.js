@@ -138,6 +138,21 @@ function getSpriteUrl(speciesRaw) {
 }
 
 /**
+ * 創造模式自訂寶可夢的「靜態圖標」網址
+ * 依物種 id 或名稱查詢；無自訂圖標則回傳 null。
+ */
+function getCustomSpeciesIcon(speciesRaw) {
+    if (!speciesRaw) return null;
+    try {
+        if (typeof window !== 'undefined' && window.CreativeMode && typeof window.CreativeMode.getSpeciesMedia === 'function') {
+            const media = window.CreativeMode.getSpeciesMedia(speciesRaw);
+            if (media && media.icon) return media.icon;
+        }
+    } catch (e) {}
+    return null;
+}
+
+/**
  * Get theme colors and types from species
  * Looks up POKEDEX global variable
  */

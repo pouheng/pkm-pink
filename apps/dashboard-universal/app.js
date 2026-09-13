@@ -576,7 +576,8 @@ function renderDashboard() {
     partySlots.forEach(slotKey => {
         const mon = partyData[slotKey];
         if (mon?.name) {
-            const shotx = mon.shotx || `https://img.pokemondb.net/sprites/scarlet-violet/icon/${mon.name.toLowerCase()}.png`;
+            const customIcon = (typeof getCustomSpeciesIcon === 'function') ? getCustomSpeciesIcon(mon.name) : null;
+            const shotx = mon.shotx || customIcon || `https://img.pokemondb.net/sprites/scarlet-violet/icon/${mon.name.toLowerCase()}.png`;
             rosterHTML += `
                 <div class="roster-slot">
                     <img class="pk-icon" src="${shotx}" alt="${mon.name}">

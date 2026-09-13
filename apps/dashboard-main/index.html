@@ -62,19 +62,19 @@
     <!-- JS路径保持正确 -->
     <script src="https://files.catbox.moe/8oxf4b.js?v=20260520-dashboard-host-fix"></script>
     <script src="../shared/translations.js?v=20260520-dashboard-host-fix"></script>
-    <script src="../shared/dashboard/data-helpers.js?v=20260520-dashboard-host-fix"></script>
+    <script src="../shared/dashboard/data-helpers.js?v=20260912-customicon"></script>
     <script src="../shared/dashboard/bridge-client.js?v=20260520-dashboard-host-fix"></script>
-    <script src="../shared/dashboard/ui-common.js?v=20260520-dashboard-host-fix"></script>
+    <script src="../shared/dashboard/ui-common.js?v=20260912-customicon"></script>
     <script src="../shared/dashboard/move-pool.js?v=20260912-creative"></script>
-    <script src="../shared/dashboard/box-manager.js?v=20260520-dashboard-host-fix"></script>
-    <script src="app.js?v=20260520-dashboard-host-fix"></script>
+    <script src="../shared/dashboard/box-manager.js?v=20260912-customicon"></script>
+    <script src="app.js?v=20260912-customicon"></script>
 
     <!-- 創造模式：可由儀表板導航列、懸浮球外框按鈕、或 ?creative=1 開啟 -->
     <script>window.PKM_CREATIVE_HIDE_LAUNCHER = true;</script>
     <script>
         window.__pkmOpenCreative = function () {
             try {
-                import('../battle-sim/ui/creative-panel.js?v=20260912l')
+                import('../battle-sim/ui/creative-panel.js?v=20260912m')
                     .then(function (mod) {
                         if (mod && typeof mod.openPanel === 'function') mod.openPanel();
                         else if (window.CreativePanel) window.CreativePanel.open();
@@ -96,7 +96,7 @@
             } catch (e) {}
         })();
     </script>
-    <script type="module" src="../battle-sim/ui/creative-panel.js?v=20260912l"></script>
+    <script type="module" src="../battle-sim/ui/creative-panel.js?v=20260912m"></script>
 
 </body>
 </html>
